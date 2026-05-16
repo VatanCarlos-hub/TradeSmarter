@@ -24,115 +24,111 @@
     }
     html { scroll-behavior: smooth; }
     body { background: var(--bg); color: var(--text); font-family: var(--serif); min-height: 100vh; }
-    body::after { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse at 50% 0%, rgba(184,146,42,0.06) 0%, transparent 60%); pointer-events: none; z-index: 0; }
-    .wrap { position: relative; z-index: 1; max-width: 680px; margin: 0 auto; padding: 56px 28px 100px; }
+    body::after { content:''; position:fixed; inset:0; background:radial-gradient(ellipse at 50% 0%, rgba(184,146,42,0.06) 0%, transparent 60%); pointer-events:none; z-index:0; }
+    .wrap { position:relative; z-index:1; max-width:680px; margin:0 auto; padding:56px 28px 100px; }
 
-    /* Header */
-    .header { text-align: center; margin-bottom: 60px; animation: fadeUp 0.8s ease both; }
-    .eyebrow { font-family: var(--display); font-size: 9px; letter-spacing: 7px; color: var(--text-faint); margin-bottom: 20px; }
-    .title { font-family: var(--display); font-size: clamp(34px, 6vw, 56px); font-weight: 400; letter-spacing: 7px; color: var(--text); line-height: 1; }
-    .gold-line { width: 40px; height: 1px; background: linear-gradient(90deg, transparent, var(--gold-light), transparent); margin: 22px auto; }
-    .subtitle { font-size: 14px; font-style: italic; color: var(--text-dim); letter-spacing: 1px; }
+    .header { text-align:center; margin-bottom:60px; animation:fadeUp 0.8s ease both; }
+    .eyebrow { font-family:var(--display); font-size:9px; letter-spacing:7px; color:var(--text-faint); margin-bottom:20px; }
+    .title { font-family:var(--display); font-size:clamp(34px,6vw,56px); font-weight:400; letter-spacing:7px; color:var(--text); line-height:1; }
+    .gold-line { width:40px; height:1px; background:linear-gradient(90deg,transparent,var(--gold-light),transparent); margin:22px auto; }
+    .subtitle { font-size:14px; font-style:italic; color:var(--text-dim); letter-spacing:1px; }
 
-    /* Wallet */
-    .wallet-bar { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border: 1px solid var(--border); background: var(--bg2); margin-bottom: 48px; border-radius: 1px; animation: fadeUp 0.8s 0.05s ease both; }
-    .wallet-status { font-family: var(--display); font-size: 9px; letter-spacing: 3px; color: var(--text-faint); margin-bottom: 4px; }
-    .wallet-addr { font-size: 13px; color: var(--text-dim); }
-    .wallet-btn { font-family: var(--display); font-size: 9px; letter-spacing: 3px; padding: 8px 18px; background: var(--gold); border: none; color: var(--bg); cursor: pointer; transition: all 0.2s; font-weight: 500; }
-    .wallet-btn:hover { background: var(--gold-light); }
-    .wallet-btn:disabled { background: var(--bg3); color: var(--text-faint); border: 1px solid var(--border); cursor: default; }
+    .wallet-bar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border:1px solid var(--border); background:var(--bg2); margin-bottom:48px; animation:fadeUp 0.8s 0.05s ease both; }
+    .wallet-status { font-family:var(--display); font-size:9px; letter-spacing:3px; color:var(--text-faint); margin-bottom:4px; }
+    .wallet-addr { font-size:13px; color:var(--text-dim); }
+    .wallet-btn { font-family:var(--display); font-size:9px; letter-spacing:3px; padding:8px 18px; background:var(--gold); border:none; color:var(--bg); cursor:pointer; transition:all 0.2s; font-weight:500; }
+    .wallet-btn:hover { background:var(--gold-light); }
+    .wallet-btn:disabled { background:var(--bg3); color:var(--text-faint); border:1px solid var(--border); cursor:default; }
 
-    /* Form */
-    .form { animation: fadeUp 0.8s 0.1s ease both; }
-    .field { margin-bottom: 40px; }
-    .label { font-family: var(--display); font-size: 9px; letter-spacing: 5px; color: var(--text-faint); margin-bottom: 14px; display: block; }
-    input[type="text"] { width: 100%; background: var(--bg2); border: 1px solid var(--border); border-bottom: 2px solid var(--border-strong); color: var(--text); font-family: var(--serif); font-size: 28px; font-weight: 300; letter-spacing: 4px; padding: 12px 16px; transition: all 0.3s; outline: none; }
-    input[type="text"]:focus { border-color: var(--gold); background: var(--bg3); }
-    input[type="text"]::placeholder { color: var(--text-faint); }
-    .quick-coins { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-    .qc { font-family: var(--display); font-size: 9px; letter-spacing: 2px; padding: 5px 12px; background: var(--bg2); border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; transition: all 0.2s; }
-    .qc:hover, .qc.active { background: var(--bg3); border-color: var(--gold); color: var(--gold-pale); }
-    .timeframes { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tf-btn { font-family: var(--display); font-size: 9px; letter-spacing: 2px; padding: 9px 16px; background: var(--bg2); border: 1px solid var(--border); color: var(--text-faint); cursor: pointer; transition: all 0.2s; }
-    .tf-btn:hover, .tf-btn.active { background: var(--bg3); border-color: var(--gold); color: var(--gold-pale); }
-    .cta { width: 100%; margin-top: 44px; padding: 18px; background: var(--gold); border: none; color: var(--bg); font-family: var(--display); font-size: 11px; letter-spacing: 5px; cursor: pointer; transition: all 0.25s; font-weight: 500; }
-    .cta:hover:not(:disabled) { background: var(--gold-light); }
-    .cta:disabled { background: var(--bg3); color: var(--text-faint); border: 1px solid var(--border); cursor: not-allowed; }
+    .form { animation:fadeUp 0.8s 0.1s ease both; }
+    .field { margin-bottom:40px; }
+    .label { font-family:var(--display); font-size:9px; letter-spacing:5px; color:var(--text-faint); margin-bottom:14px; display:block; }
 
-    /* Status */
-    .status-msg { margin-top: 20px; padding: 14px 18px; border-left: 3px solid var(--gold); background: var(--bg2); font-size: 13px; color: var(--text-dim); line-height: 1.6; display: none; }
-    .status-msg.error { border-color: #c0534a; color: #e09090; background: rgba(180,60,60,0.08); }
+    /* Live price badge */
+    .price-badge { display:inline-flex; align-items:center; gap:8px; margin-top:12px; padding:8px 14px; background:var(--bg3); border:1px solid var(--border-strong); }
+    .price-badge-label { font-family:var(--display); font-size:8px; letter-spacing:3px; color:var(--text-faint); }
+    .price-badge-value { font-family:var(--serif); font-size:18px; color:var(--gold-pale); font-weight:400; }
+    .price-badge-change { font-size:12px; }
+    .price-badge-change.up { color:#7ab87a; }
+    .price-badge-change.down { color:#c07070; }
 
-    /* Loading */
-    .loading { margin-top: 64px; text-align: center; display: none; animation: fadeUp 0.5s ease both; }
-    .spinner { width: 48px; height: 48px; border: 2px solid var(--bg3); border-top-color: var(--gold); border-radius: 50%; margin: 0 auto 28px; animation: spin 1.8s linear infinite; }
-    .loading-label { font-family: var(--display); font-size: 9px; letter-spacing: 5px; color: var(--text-faint); margin-bottom: 12px; }
-    .timer { font-family: var(--serif); font-size: 36px; font-weight: 300; color: var(--gold-light); letter-spacing: 2px; }
-    .loading-phase { font-size: 13px; color: var(--text-dim); margin-top: 14px; font-style: italic; }
+    input[type="text"] { width:100%; background:var(--bg2); border:1px solid var(--border); border-bottom:2px solid var(--border-strong); color:var(--text); font-family:var(--serif); font-size:28px; font-weight:300; letter-spacing:4px; padding:12px 16px; transition:all 0.3s; outline:none; }
+    input[type="text"]:focus { border-color:var(--gold); background:var(--bg3); }
+    input[type="text"]::placeholder { color:var(--text-faint); }
+    .quick-coins { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+    .qc,.tf-btn { font-family:var(--display); font-size:9px; letter-spacing:2px; background:var(--bg2); border:1px solid var(--border); color:var(--text-faint); cursor:pointer; transition:all 0.2s; }
+    .qc { padding:5px 12px; }
+    .tf-btn { padding:9px 16px; }
+    .qc:hover,.qc.active,.tf-btn:hover,.tf-btn.active { background:var(--bg3); border-color:var(--gold); color:var(--gold-pale); }
+    .timeframes { display:flex; flex-wrap:wrap; gap:6px; }
+    .cta { width:100%; margin-top:44px; padding:18px; background:var(--gold); border:none; color:var(--bg); font-family:var(--display); font-size:11px; letter-spacing:5px; cursor:pointer; transition:all 0.25s; font-weight:500; }
+    .cta:hover:not(:disabled) { background:var(--gold-light); }
+    .cta:disabled { background:var(--bg3); color:var(--text-faint); border:1px solid var(--border); cursor:not-allowed; }
 
-    /* Result */
-    #result { margin-top: 72px; display: none; animation: fadeUp 0.8s ease both; }
+    .status-msg { margin-top:20px; padding:14px 18px; border-left:3px solid var(--gold); background:var(--bg2); font-size:13px; color:var(--text-dim); line-height:1.6; display:none; }
+    .status-msg.error { border-color:#c0534a; color:#e09090; background:rgba(180,60,60,0.08); }
 
-    .result-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
-    .result-coin { font-family: var(--display); font-size: 42px; font-weight: 400; letter-spacing: 5px; color: var(--text); line-height: 1; }
-    .result-price { font-family: var(--serif); font-size: 22px; color: var(--gold-pale); font-weight: 300; margin-top: 6px; }
-    .result-meta { font-family: var(--display); font-size: 9px; letter-spacing: 3px; color: var(--text-faint); margin-bottom: 8px; }
-    .result-trend { font-family: var(--display); font-size: 12px; letter-spacing: 4px; }
+    .loading { margin-top:64px; text-align:center; display:none; animation:fadeUp 0.5s ease both; }
+    .spinner { width:48px; height:48px; border:2px solid var(--bg3); border-top-color:var(--gold); border-radius:50%; margin:0 auto 28px; animation:spin 1.8s linear infinite; }
+    .loading-label { font-family:var(--display); font-size:9px; letter-spacing:5px; color:var(--text-faint); margin-bottom:12px; }
+    .timer { font-family:var(--serif); font-size:36px; font-weight:300; color:var(--gold-light); letter-spacing:2px; }
+    .loading-phase { font-size:13px; color:var(--text-dim); margin-top:14px; font-style:italic; }
 
-    /* Verdict */
-    .verdict-box { padding: 24px 28px; border: 1px solid var(--border); background: var(--bg2); margin-bottom: 40px; border-left: 3px solid var(--gold); }
-    .verdict-eyebrow { font-family: var(--display); font-size: 9px; letter-spacing: 5px; color: var(--text-faint); margin-bottom: 14px; }
-    .verdict-text { font-size: 18px; font-weight: 300; font-style: italic; line-height: 1.7; color: var(--text); }
-    .verdict-confidence { font-family: var(--display); font-size: 9px; letter-spacing: 4px; color: var(--text-faint); text-align: right; margin-top: 14px; }
+    #result { margin-top:72px; display:none; animation:fadeUp 0.8s ease both; }
+    .result-header { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:40px; padding-bottom:24px; border-bottom:1px solid var(--border); }
+    .result-coin { font-family:var(--display); font-size:42px; font-weight:400; letter-spacing:5px; color:var(--text); line-height:1; }
+    .result-price { font-size:22px; color:var(--gold-pale); font-weight:300; margin-top:6px; }
+    .result-meta { font-family:var(--display); font-size:9px; letter-spacing:3px; color:var(--text-faint); margin-bottom:8px; }
+    .result-trend { font-family:var(--display); font-size:12px; letter-spacing:4px; }
 
-    /* Probability */
-    .prob-section { margin-bottom: 40px; background: var(--bg2); padding: 24px; border: 1px solid var(--border); }
-    .prob-bar-wrap { height: 4px; display: flex; gap: 2px; border-radius: 2px; overflow: hidden; margin-bottom: 16px; }
-    .prob-bull { background: var(--gold-light); transition: width 1.2s cubic-bezier(.4,0,.2,1); }
-    .prob-neutral { background: rgba(184,146,42,0.35); transition: width 1.2s cubic-bezier(.4,0,.2,1); }
-    .prob-bear { background: rgba(184,146,42,0.15); transition: width 1.2s cubic-bezier(.4,0,.2,1); }
-    .prob-labels { display: flex; justify-content: space-between; }
-    .prob-item { text-align: center; }
-    .prob-item:first-child { text-align: left; }
-    .prob-item:last-child { text-align: right; }
-    .prob-label { font-family: var(--display); font-size: 9px; letter-spacing: 3px; color: var(--text-faint); margin-bottom: 6px; }
-    .prob-val { font-family: var(--serif); font-size: 28px; font-weight: 300; }
+    .verdict-box { padding:24px 28px; border:1px solid var(--border); background:var(--bg2); margin-bottom:40px; border-left:3px solid var(--gold); }
+    .verdict-eyebrow { font-family:var(--display); font-size:9px; letter-spacing:5px; color:var(--text-faint); margin-bottom:14px; }
+    .verdict-text { font-size:18px; font-weight:300; font-style:italic; line-height:1.7; color:var(--text); }
+    .verdict-confidence { font-family:var(--display); font-size:9px; letter-spacing:4px; color:var(--text-faint); text-align:right; margin-top:14px; }
 
-    /* Divider */
-    .divider { display: flex; align-items: center; gap: 14px; margin: 32px 0; }
-    .divider-line { flex: 1; height: 1px; background: var(--border); }
-    .divider-gem { width: 5px; height: 5px; border: 1px solid var(--border-strong); transform: rotate(45deg); }
+    .prob-section { margin-bottom:40px; background:var(--bg2); padding:24px; border:1px solid var(--border); }
+    .prob-bar-wrap { height:4px; display:flex; gap:2px; border-radius:2px; overflow:hidden; margin-bottom:16px; }
+    .prob-bull { background:var(--gold-light); transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+    .prob-neutral { background:rgba(184,146,42,0.35); transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+    .prob-bear { background:rgba(184,146,42,0.15); transition:width 1.2s cubic-bezier(.4,0,.2,1); }
+    .prob-labels { display:flex; justify-content:space-between; }
+    .prob-item { text-align:center; }
+    .prob-item:first-child { text-align:left; }
+    .prob-item:last-child { text-align:right; }
+    .prob-label { font-family:var(--display); font-size:9px; letter-spacing:3px; color:var(--text-faint); margin-bottom:6px; }
+    .prob-val { font-family:var(--serif); font-size:28px; font-weight:300; }
 
-    /* Section */
-    .section-label { font-family: var(--display); font-size: 9px; letter-spacing: 5px; color: var(--text-faint); margin-bottom: 16px; }
-    .row { display: flex; justify-content: space-between; align-items: baseline; padding: 13px 0; border-bottom: 1px solid rgba(184,146,42,0.08); gap: 16px; }
-    .row-label { font-family: var(--display); font-size: 9px; letter-spacing: 3px; color: var(--text-faint); white-space: nowrap; flex-shrink: 0; }
-    .row-value { font-size: 14px; color: var(--text); text-align: right; line-height: 1.5; font-weight: 400; }
-    .row-value.accent { color: var(--gold-pale); font-size: 16px; }
+    .divider { display:flex; align-items:center; gap:14px; margin:32px 0; }
+    .divider-line { flex:1; height:1px; background:var(--border); }
+    .divider-gem { width:5px; height:5px; border:1px solid var(--border-strong); transform:rotate(45deg); }
 
-    /* Scenarios */
-    .scenarios { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .scenario-card { padding: 20px; border: 1px solid var(--border); background: var(--bg2); }
-    .scenario-card.bull { border-top: 2px solid var(--gold); }
-    .scenario-card.bear { border-top: 2px solid rgba(184,146,42,0.2); }
-    .sc-label { font-family: var(--display); font-size: 9px; letter-spacing: 3px; margin-bottom: 16px; }
-    .sc-label.bull { color: var(--gold); }
-    .sc-label.bear { color: var(--text-faint); }
-    .sc-tl { font-family: var(--display); font-size: 8px; letter-spacing: 2px; color: var(--text-faint); margin-bottom: 4px; }
-    .sc-price { font-family: var(--serif); font-size: 19px; font-weight: 400; margin-bottom: 12px; }
-    .sc-price.bull { color: var(--gold-pale); }
-    .sc-price.bear { color: var(--text-dim); }
-    .sc-gain { font-size: 12px; margin-left: 6px; color: var(--text-dim); }
-    .sc-cond { font-size: 12px; font-style: italic; line-height: 1.55; color: var(--text-dim); border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; }
+    .section-label { font-family:var(--display); font-size:9px; letter-spacing:5px; color:var(--text-faint); margin-bottom:16px; }
+    .row { display:flex; justify-content:space-between; align-items:baseline; padding:13px 0; border-bottom:1px solid rgba(184,146,42,0.08); gap:16px; }
+    .row-label { font-family:var(--display); font-size:9px; letter-spacing:3px; color:var(--text-faint); white-space:nowrap; flex-shrink:0; }
+    .row-value { font-size:14px; color:var(--text); text-align:right; line-height:1.5; }
+    .row-value.accent { color:var(--gold-pale); font-size:16px; font-weight:600; }
 
-    /* Footer */
-    .result-footer { text-align: center; margin-top: 52px; padding-top: 28px; border-top: 1px solid var(--border); }
-    .result-footer-text { font-family: var(--display); font-size: 8px; letter-spacing: 3px; color: var(--text-faint); }
+    .scenarios { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+    .scenario-card { padding:20px; border:1px solid var(--border); background:var(--bg2); }
+    .scenario-card.bull { border-top:2px solid var(--gold); }
+    .scenario-card.bear { border-top:2px solid rgba(184,146,42,0.2); }
+    .sc-label { font-family:var(--display); font-size:9px; letter-spacing:3px; margin-bottom:16px; }
+    .sc-label.bull { color:var(--gold); }
+    .sc-label.bear { color:var(--text-faint); }
+    .sc-tl { font-family:var(--display); font-size:8px; letter-spacing:2px; color:var(--text-faint); margin-bottom:4px; }
+    .sc-price { font-family:var(--serif); font-size:19px; font-weight:400; margin-bottom:12px; }
+    .sc-price.bull { color:var(--gold-pale); }
+    .sc-price.bear { color:var(--text-dim); }
+    .sc-gain { font-size:12px; margin-left:6px; color:var(--text-dim); }
+    .sc-cond { font-size:12px; font-style:italic; line-height:1.55; color:var(--text-dim); border-top:1px solid var(--border); padding-top:12px; margin-top:4px; }
+
+    .result-footer { text-align:center; margin-top:52px; padding-top:28px; border-top:1px solid var(--border); }
+    .result-footer-text { font-family:var(--display); font-size:8px; letter-spacing:3px; color:var(--text-faint); }
 
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-    ::-webkit-scrollbar { width: 3px; }
-    ::-webkit-scrollbar-thumb { background: var(--border-strong); }
+    ::-webkit-scrollbar { width:3px; }
+    ::-webkit-scrollbar-thumb { background:var(--border-strong); }
     @media(max-width:520px){.scenarios{grid-template-columns:1fr}.result-header{flex-direction:column;gap:16px;align-items:flex-start}}
   </style>
 </head>
@@ -168,6 +164,12 @@
         <button class="qc" data-coin="ADA">ADA</button>
         <button class="qc" data-coin="AVAX">AVAX</button>
       </div>
+      <!-- Live price badge -->
+      <div class="price-badge" id="price-badge" style="display:none">
+        <span class="price-badge-label">LIVE</span>
+        <span class="price-badge-value" id="live-price">—</span>
+        <span class="price-badge-change" id="live-change"></span>
+      </div>
     </div>
     <div class="field">
       <label class="label">TIMEFRAME</label>
@@ -190,7 +192,7 @@
     <div class="spinner"></div>
     <div class="loading-label">AI JURY DELIBERATING</div>
     <div class="timer" id="timer">00:00</div>
-    <div class="loading-phase" id="loading-phase">Submitting to GenLayer...</div>
+    <div class="loading-phase" id="loading-phase">Fetching live price...</div>
   </div>
 
   <div id="result">
@@ -271,7 +273,7 @@
     </div>
 
     <div class="result-footer">
-      <div class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; LIVE DATA VIA COINGECKO</div>
+      <div class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; LIVE PRICE VIA COINGECKO</div>
     </div>
   </div>
 
@@ -284,14 +286,17 @@
 
   const CONTRACT = '0xc9B9230eF72f4893d321518b17e6Bbcfd485b3be';
   const TF_LABELS = {'1h':'1 Hour','2h':'2 Hours','4h':'4 Hours','8h':'8 Hours','12h':'12 Hours','1d':'1 Day','1w':'1 Week','1m':'1 Month'};
+  const COIN_IDS  = {BTC:'bitcoin',ETH:'ethereum',XRP:'ripple',SOL:'solana',BNB:'binancecoin',DOGE:'dogecoin',ADA:'cardano',AVAX:'avalanche-2'};
 
   let walletAddress = null;
   let client = null;
   let selectedCoin = 'BTC';
-  let selectedTf = '4h';
+  let selectedTf   = '4h';
+  let livePrice    = null;
   let timerInterval = null;
   let elapsed = 0;
 
+  // ── Wallet ──────────────────────────────────────────────
   document.getElementById('wallet-btn').addEventListener('click', connectWallet);
 
   async function connectWallet() {
@@ -299,28 +304,53 @@
     try {
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
       walletAddress = accounts[0];
-      document.getElementById('wallet-addr').textContent = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
+      document.getElementById('wallet-addr').textContent = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
       const btn = document.getElementById('wallet-btn');
-      btn.textContent = 'CONNECTED';
-      btn.disabled = true;
+      btn.textContent = 'CONNECTED'; btn.disabled = true;
       client = createClient({ chain: studionet, account: walletAddress });
       await client.connect('studionet');
       const cta = document.getElementById('analyze-btn');
-      cta.disabled = false;
-      cta.textContent = 'REQUEST ANALYSIS';
+      cta.disabled = false; cta.textContent = 'REQUEST ANALYSIS';
+      fetchLivePrice(selectedCoin);
     } catch(e) { showStatus('Connection failed: ' + e.message, true); }
   }
 
+  // ── Live Price ───────────────────────────────────────────
+  async function fetchLivePrice(coin) {
+    const coinId = COIN_IDS[coin] || coin.toLowerCase();
+    document.getElementById('price-badge').style.display = 'none';
+    try {
+      const res  = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`);
+      const data = await res.json();
+      const info = data[coinId];
+      if (!info) return;
+      livePrice = info.usd;
+      const change = info.usd_24h_change;
+      document.getElementById('live-price').textContent = '$' + fmt(livePrice);
+      const chEl = document.getElementById('live-change');
+      chEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+      chEl.className = 'price-badge-change ' + (change >= 0 ? 'up' : 'down');
+      document.getElementById('price-badge').style.display = 'inline-flex';
+    } catch(e) { console.warn('Price fetch failed', e); }
+  }
+
+  // ── Coin & Timeframe ─────────────────────────────────────
   document.querySelectorAll('.qc').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.qc').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    selectedCoin = b.dataset.coin;
+    b.classList.add('active'); selectedCoin = b.dataset.coin;
     document.getElementById('coin-input').value = selectedCoin;
+    livePrice = null;
+    if (walletAddress) fetchLivePrice(selectedCoin);
   }));
 
   document.getElementById('coin-input').addEventListener('input', e => {
     const v = e.target.value.toUpperCase(); e.target.value = v; selectedCoin = v;
     document.querySelectorAll('.qc').forEach(b => b.classList.toggle('active', b.dataset.coin === v));
+    livePrice = null; document.getElementById('price-badge').style.display = 'none';
+  });
+
+  document.getElementById('coin-input').addEventListener('blur', () => {
+    if (walletAddress && selectedCoin) fetchLivePrice(selectedCoin);
   });
 
   document.getElementById('coin-input').addEventListener('keydown', e => { if(e.key==='Enter' && walletAddress) analyze(); });
@@ -332,53 +362,89 @@
 
   document.getElementById('analyze-btn').addEventListener('click', analyze);
 
+  // ── Analyze ──────────────────────────────────────────────
   async function analyze() {
     if (!walletAddress || !selectedCoin.trim()) return;
     const btn = document.getElementById('analyze-btn');
     btn.disabled = true; btn.textContent = 'PROCESSING...';
     document.getElementById('result').style.display = 'none';
     document.getElementById('loading').style.display = 'block';
-    showStatus('');
-    startTimer();
+    showStatus(''); startTimer();
     setTimeout(() => document.getElementById('loading').scrollIntoView({behavior:'smooth',block:'center'}), 100);
 
     try {
-      setPhase('Fetching live price & submitting to GenLayer...');
+      // 1. Fetch live price FIRST (frontend — guaranteed accurate)
+      setPhase('Fetching live price from CoinGecko...');
+      const coinId = COIN_IDS[selectedCoin] || selectedCoin.toLowerCase();
+      let priceStr = livePrice ? String(Math.round(livePrice)) : null;
+
+      if (!priceStr) {
+        const res  = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&include_24hr_change=true`);
+        const data = await res.json();
+        const info = data[coinId];
+        if (info?.usd) {
+          livePrice = info.usd;
+          priceStr  = String(Math.round(info.usd));
+          // Update badge
+          document.getElementById('live-price').textContent = '$' + fmt(livePrice);
+          const change = info.usd_24h_change;
+          const chEl = document.getElementById('live-change');
+          chEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+          chEl.className = 'price-badge-change ' + (change >= 0 ? 'up' : 'down');
+          document.getElementById('price-badge').style.display = 'inline-flex';
+        }
+      }
+
+      if (!priceStr) throw new Error('Could not fetch live price. Check internet connection.');
+
+      // 2. Submit to GenLayer contract with live price
+      setPhase(`Live price: $${fmt(Number(priceStr))} — submitting to GenLayer...`);
       const txHash = await client.writeContract({
-        address: CONTRACT, functionName: 'request_analysis',
-        args: [selectedCoin, selectedTf], value: BigInt(0),
+        address: CONTRACT,
+        functionName: 'request_analysis',
+        args: [selectedCoin, selectedTf, priceStr],
+        value: BigInt(0),
       });
+
       setPhase('Transaction submitted — AI Jury reaching consensus...');
-      await client.waitForTransactionReceipt({ hash: txHash, status: TransactionStatus.FINALIZED, retries: 60, interval: 5000 });
+      await client.waitForTransactionReceipt({
+        hash: txHash, status: TransactionStatus.FINALIZED,
+        retries: 60, interval: 5000,
+      });
+
+      // 3. Read result
       setPhase('Consensus reached — reading analysis...');
-      const raw = await client.readContract({ address: CONTRACT, functionName: 'get_result', args: [walletAddress] });
+      const raw  = await client.readContract({ address: CONTRACT, functionName: 'get_result', args: [walletAddress] });
       const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (data?.error) throw new Error(data.error);
+
       stopTimer();
       document.getElementById('loading').style.display = 'none';
-      renderResult(data);
+      renderResult(data, priceStr);
+
     } catch(e) {
       stopTimer();
       document.getElementById('loading').style.display = 'none';
       showStatus('Error: ' + (e.message || String(e)), true);
+      console.error(e);
     }
+
     btn.disabled = false; btn.textContent = 'REQUEST ANALYSIS';
   }
 
+  // ── Timer ────────────────────────────────────────────────
   function startTimer() {
     elapsed = 0; clearInterval(timerInterval);
     timerInterval = setInterval(() => {
       elapsed++;
       document.getElementById('timer').textContent = `${String(Math.floor(elapsed/60)).padStart(2,'0')}:${String(elapsed%60).padStart(2,'0')}`;
-      const phases = ['Fetching live price data...','Querying validators...','Aggregating signals...','Finalising verdict...'];
-      document.getElementById('loading-phase').textContent = phases[Math.min(Math.floor(elapsed/15), phases.length-1)];
     }, 1000);
   }
   function stopTimer() { clearInterval(timerInterval); }
   function setPhase(m) { document.getElementById('loading-phase').textContent = m; }
 
   function fmt(n) {
-    if (!n) return '—';
+    if (n == null || n === '') return '—';
     const num = parseFloat(String(n).replace(/,/g,''));
     if (isNaN(num)) return n;
     return new Intl.NumberFormat('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}).format(num);
@@ -392,19 +458,26 @@
     el.style.display = 'block';
   }
 
-  function renderResult(d) {
-    const trendColors = {bullish:'#d4a843', bearish:'#c07070', neutral:'#8a7d60'};
-    document.getElementById('r-meta').textContent    = `${d.timeframe || TF_LABELS[selectedTf]} · SIGNAL RECEIVED`;
-    document.getElementById('r-coin').textContent    = d.coin || selectedCoin;
-    document.getElementById('r-price').textContent   = d.current_price ? `$${fmt(d.current_price)}` : '';
-    document.getElementById('r-trend').textContent   = (d.trend || '—').toUpperCase();
-    document.getElementById('r-trend').style.color   = trendColors[d.trend] || '#b8922a';
-    document.getElementById('r-verdict').textContent = `"${d.verdict || '—'}"`;
-    document.getElementById('r-confidence').textContent = `CONFIDENCE · ${d.confidence || '—'}`;
+  // ── Render ───────────────────────────────────────────────
+  function renderResult(d, priceStr) {
+    const trendColors = {bullish:'#d4a843',bearish:'#c07070',neutral:'#8a7d60'};
+    document.getElementById('r-meta').textContent   = `${d.timeframe||TF_LABELS[selectedTf]} · SIGNAL`;
+    document.getElementById('r-coin').textContent   = d.coin || selectedCoin;
+    document.getElementById('r-price').textContent  = `$${fmt(d.current_price || priceStr)}`;
+    document.getElementById('r-trend').textContent  = (d.trend||'—').toUpperCase();
+    document.getElementById('r-trend').style.color  = trendColors[d.trend]||'#b8922a';
+    document.getElementById('r-verdict').textContent = `"${d.verdict||'—'}"`;
+    document.getElementById('r-confidence').textContent = `CONFIDENCE · ${d.confidence||'—'}`;
 
-    const bull=d.bull_probability||0, bear=d.bear_probability||0, neutral=d.neutral_probability||0;
-    setTimeout(()=>{ document.getElementById('pb-bull').style.width=bull+'%'; document.getElementById('pb-neutral').style.width=neutral+'%'; document.getElementById('pb-bear').style.width=bear+'%'; },100);
-    document.getElementById('p-bull').textContent=bull; document.getElementById('p-neutral').textContent=neutral; document.getElementById('p-bear').textContent=bear;
+    const bull=+(d.bull_probability||0), bear=+(d.bear_probability||0), neutral=+(d.neutral_probability||0);
+    setTimeout(()=>{
+      document.getElementById('pb-bull').style.width=bull+'%';
+      document.getElementById('pb-neutral').style.width=neutral+'%';
+      document.getElementById('pb-bear').style.width=bear+'%';
+    },100);
+    document.getElementById('p-bull').textContent=bull;
+    document.getElementById('p-neutral').textContent=neutral;
+    document.getElementById('p-bear').textContent=bear;
 
     document.getElementById('r-s1').textContent=`$${fmt(d.support_1)}`;
     document.getElementById('r-s2').textContent=`$${fmt(d.support_2)}`;
@@ -418,8 +491,10 @@
     document.getElementById('r-dt2').textContent=fmt(d.bear_target_2); document.getElementById('r-dg2').textContent=d.bear_loss_2||'';
     document.getElementById('r-dcond').textContent=d.bear_condition||'—';
 
-    document.getElementById('r-rsi').textContent=d.rsi||'—'; document.getElementById('r-macd').textContent=d.macd||'—';
-    document.getElementById('r-vol').textContent=d.volume||'—'; document.getElementById('r-ema').textContent=d.ema||'—';
+    document.getElementById('r-rsi').textContent=d.rsi||'—';
+    document.getElementById('r-macd').textContent=d.macd||'—';
+    document.getElementById('r-vol').textContent=d.volume||'—';
+    document.getElementById('r-ema').textContent=d.ema||'—';
 
     document.getElementById('result').style.display='block';
     setTimeout(()=>document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'}),100);
