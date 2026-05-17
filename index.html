@@ -509,7 +509,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x1893...a119</p>
+      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x738a...63D1</p>
       <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:6px 14px;cursor:pointer;border-radius:2px" id="disclaimer-btn">⚠ DISCLAIMER</button>
     </div>
   </div>
@@ -535,7 +535,7 @@
 //  Contract: 0x1893D07A28440adBAA9067fC5334d8B1668Ea119
 // ═══════════════════════════════════════════════════════════
 
-const CONTRACT = '0x1893D07A28440adBAA9067fC5334d8B1668Ea119';
+const CONTRACT = '0x738abF6fa04ed2a703350251bB10eb1d8b7063D1';
 const STUDIO_RPC = 'https://studio.genlayer.com/api';
 const BINANCE_BASE = 'https://api.binance.com/api/v3';
 
@@ -937,6 +937,8 @@ async function analyze() {
     });
 
     setPhase('Consensus reached — reading analysis...');
+    // Small delay to ensure state is committed on-chain
+    await new Promise(function(r){ setTimeout(r, 2000); });
     const raw = await client.readContract({
       address:      CONTRACT,
       functionName: 'get_result',
@@ -945,6 +947,7 @@ async function analyze() {
 
     const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (data && data.error) throw new Error(data.error);
+    if (!data || !data.trend) throw new Error('No analysis returned — the transaction may not have finalized. Please try again.');
 
     stopTimer();
     $('loading').style.display = 'none';
