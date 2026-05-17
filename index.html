@@ -669,7 +669,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0xAd5d...C28FC</p>
+      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x466f...790e</p>
     </div>
   </div>
 
@@ -680,7 +680,7 @@ import { createClient } from 'https://esm.sh/genlayer-js@latest';
 import { studionet }   from 'https://esm.sh/genlayer-js@latest/chains';
 import { TransactionStatus } from 'https://esm.sh/genlayer-js@latest/types';
 
-const CONTRACT  = '0xAd5d0934264460f98692eDEfe02454A601cC28FC';
+const CONTRACT  = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
 
@@ -760,26 +760,50 @@ async function fetchRealTA(coin,tf){
   const curVol=volumes[volumes.length-1];
   const volRatio=(curVol/avgVol*100).toFixed(0);
   const{supports,resistances}=findSwingHighsLows(highs,lows,5);
-  const s1=supports.find(s=>s<price*0.9995)||price*0.97;
-  const s2=supports.find(s=>s<(s1-price*0.001))||price*0.94;
-  const r1=resistances.find(r=>r>price*1.0005)||price*1.03;
-  const r2=resistances.find(r=>r>(r1+price*0.001))||price*1.06;
+
+  // Timeframe-aware minimum distances — no meaningless micro-levels
+  const minD={'1h':0.006,'2h':0.009,'4h':0.014,'8h':0.018,'12h':0.022,'1d':0.032,'1w':0.055,'1m':0.09};
+  const md=minD[tf]||0.02;
+
+  // Support: must be at least minDist% BELOW current price
+  const s1=supports.find(s=>s<price*(1-md))||price*(1-md*1.5);
+  const s2=supports.find(s=>s<s1*(1-md*0.4))||s1*(1-md*1.2);
+
+  // Resistance: must be at least minDist% ABOVE current price
+  const r1=resistances.find(r=>r>price*(1+md))||price*(1+md*1.5);
+  const r2=resistances.find(r=>r>r1*(1+md*0.4))||r1*(1+md*1.2);
+
+  // Bear targets = BEYOND supports (what happens after support breaks)
+  // bt1/bt2 = bull targets = resistance levels (correct — price aims for resistance)
+  // dt1 = s2 (after s1 breaks, next level is s2)
+  // dt2 = next swing low below s2
+  const dt1=s2;
+  const dt2=supports.find(s=>s<s2*(1-md*0.3))||s2*(1-md*1.0);
+  const bt1=r1;
+  const bt2=r2;
+
+  // Volume ratio as decimal for contract
+  const volRatioRaw=(curVol/avgVol);
+  const volRatio=(volRatioRaw*100).toFixed(0);
+
   const price24hAgo=closes[closes.length-24]||closes[0];
   const change24h=((price-price24hAgo)/price24hAgo*100).toFixed(2);
   const pct=(a,b)=>(((a-b)/b)*100).toFixed(2);
   return{
     current_price:price.toFixed(2),support_1:s1.toFixed(2),support_2:s2.toFixed(2),
     resistance_1:r1.toFixed(2),resistance_2:r2.toFixed(2),
-    bull_target_1:r1.toFixed(2),bull_target_2:r2.toFixed(2),
-    bear_target_1:s1.toFixed(2),bear_target_2:s2.toFixed(2),
-    bull_gain_1:'+'+pct(r1,price)+'%',bull_gain_2:'+'+pct(r2,price)+'%',
-    bear_loss_1:pct(s1,price)+'%',bear_loss_2:pct(s2,price)+'%',
+    bull_target_1:bt1.toFixed(2),bull_target_2:bt2.toFixed(2),
+    bear_target_1:dt1.toFixed(2),bear_target_2:dt2.toFixed(2),
+    bull_gain_1:'+'+pct(bt1,price)+'%',bull_gain_2:'+'+pct(bt2,price)+'%',
+    bear_loss_1:pct(dt1,price)+'%',bear_loss_2:pct(dt2,price)+'%',
+    volume_ratio_raw:volRatioRaw.toFixed(3),
     rsi:rsi.toFixed(1),ema50:ema50.toFixed(2),ema200:ema200.toFixed(2),
     ema_cross:ema50>ema200?'EMA50 above EMA200 (golden cross — bullish)':'EMA50 below EMA200 (death cross — bearish)',
     macd:macdLine.toFixed(4),macd_signal:signal.toFixed(4),macd_hist:histogram.toFixed(4),
     macd_status:histogram>0?'Histogram positive (bullish momentum)':'Histogram negative (bearish momentum)',
     volume:curVol.toFixed(0),volume_avg20:avgVol.toFixed(0),
     volume_vs_avg:volRatio+'% of 20-period average',
+    volume_ratio:volRatioRaw.toFixed(3),
     change_24h:change24h,
     price_vs_ema50:((price-ema50)/ema50*100).toFixed(2)+'% from EMA50',
     price_vs_ema200:((price-ema200)/ema200*100).toFixed(2)+'% from EMA200',
