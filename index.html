@@ -875,54 +875,6 @@ async function fetchRealTA(coin, tf) {
   };
 }
 
-// ── GenLayer RPC calls (no SDK needed) ────────
-async function glWrite(funcName, args) {
-  // Use eth_sendTransaction directly via MetaMask to GenLayer Studio RPC
-  // Encode function call as JSON-RPC
-  const payload = {
-    jsonrpc: '2.0', id: Date.now(), method: 'eth_sendTransaction',
-    params: [{ from: walletAddress, to: CONTRACT, data: JSON.stringify({ function: funcName, args: args }) }]
-  };
-  const res = await fetch(STUDIO_RPC, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(JSON.stringify(json.error));
-  return json.result;
-}
-
-async function glRead(funcName, args) {
-  const payload = {
-    jsonrpc: '2.0', id: Date.now(), method: 'eth_call',
-    params: [{ to: CONTRACT, data: JSON.stringify({ function: funcName, args: args || [] }) }, 'latest']
-  };
-  const res = await fetch(STUDIO_RPC, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
-  const json = await res.json();
-  if (json.error) throw new Error(JSON.stringify(json.error));
-  return json.result;
-}
-
-async function waitFinalized(txHash) {
-  for (let i = 0; i < 60; i++) {
-    await new Promise(function(r){setTimeout(r, 5000)});
-    const payload = {
-      jsonrpc: '2.0', id: Date.now(), method: 'eth_getTransactionReceipt',
-      params: [txHash]
-    };
-    const res = await fetch(STUDIO_RPC, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    const json = await res.json();
-    if (json.result && json.result.status) return json.result;
-  }
-  throw new Error('Transaction timed out after 5 minutes');
-}
-
 // ── ANALYZE ───────────────────────────────────
 async function analyze() {
   if (!walletAddress || !selectedCoin.trim()) return;
@@ -935,31 +887,41 @@ async function analyze() {
   try {
     setPhase('Fetching Binance OHLCV data...');
     const ta = await fetchRealTA(selectedCoin, selectedTf);
-    setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · Submitting to GenLayer...');
+    setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · Connecting to GenLayer...');
 
-    // Try genlayer-js via dynamic import first, fallback to raw RPC
-    let raw;
-    try {
-      const glMod = await import('https://esm.sh/genlayer-js@0.5.0');
-      const chainsMod = await import('https://esm.sh/genlayer-js@0.5.0/chains');
-      const client = glMod.createClient({ chain: chainsMod.studionet, account: walletAddress });
-      const txHash = await client.writeContract({
-        address: CONTRACT,
-        functionName: 'request_analysis',
-        args: [selectedCoin, selectedTf, JSON.stringify(ta)],
-      });
-      setPhase('Transaction submitted — AI Jury interpreting indicators...');
-      await new Promise(function(r){setTimeout(r, 30000)}); // wait 30s for finalization
-      raw = await client.readContract({ address: CONTRACT, functionName: 'get_result', args: [walletAddress] });
-    } catch(sdkErr) {
-      console.warn('genlayer-js SDK failed, using raw RPC:', sdkErr);
-      setPhase('Submitting via RPC...');
-      const txHash = await glWrite('request_analysis', [selectedCoin, selectedTf, JSON.stringify(ta)]);
-      setPhase('Waiting for AI Jury consensus...');
-      await waitFinalized(txHash);
-      setPhase('Reading result...');
-      raw = await glRead('get_result', [walletAddress]);
-    }
+    // GenLayer Studio — no GEN tokens needed, uses Studio's internal wallet
+    const glMod     = await import('https://esm.sh/genlayer-js@latest');
+    const chainsMod = await import('https://esm.sh/genlayer-js@latest/chains');
+
+    // createClient with studionet uses Studio RPC — no MetaMask gas required
+    const client = glMod.createClient({
+      chain:   chainsMod.studionet,
+      account: walletAddress,
+    });
+
+    setPhase('Submitting to GenLayer Studio...');
+    const txHash = await client.writeContract({
+      address:      CONTRACT,
+      functionName: 'request_analysis',
+      args:         [selectedCoin, selectedTf, JSON.stringify(ta)],
+    });
+
+    setPhase('AI Jury deliberating — waiting for consensus...');
+    // Poll for finalization
+    const { TransactionStatus } = await import('https://esm.sh/genlayer-js@latest/types');
+    await client.waitForTransactionReceipt({
+      hash:     txHash,
+      status:   TransactionStatus.FINALIZED,
+      retries:  60,
+      interval: 5000,
+    });
+
+    setPhase('Consensus reached — reading analysis...');
+    const raw  = await client.readContract({
+      address:      CONTRACT,
+      functionName: 'get_result',
+      args:         [walletAddress],
+    });
 
     const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (data && data.error) throw new Error(data.error);
