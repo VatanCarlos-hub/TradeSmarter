@@ -1146,7 +1146,7 @@ function renderResult(d, ta) {
 
   document.getElementById('result').style.display = 'block';
   // Render trade suggestion
-  if (window._tradeHook) window._tradeHook(d);
+  if (window._tradeHook && d && d.bull_probability !== undefined) window._tradeHook(d);
   setTimeout(function() {
     document.getElementById('result').scrollIntoView({behavior:'smooth', block:'start'});
   }, 100);
@@ -1346,10 +1346,10 @@ const TRANSLATIONS = {
     trade_disclaimer_text: 'Signal probabiliste basé uniquement sur les indicateurs techniques. Ne tradez jamais sans votre propre recherche.',
     footer: 'PAS DE CONSEIL FINANCIER · JURY IA GENLAYER · DONNÉES BINANCE OHLCV',
     disc_title: 'Pas de Conseil Financier',
-    disc_p1: 'Alpha Signal est un outil d'analyse technique à des fins d'information uniquement.',
-    disc_p2: 'Rien ici ne constitue un conseil financier ou de trading.',
+    disc_p1: "Alpha Signal est un outil d'analyse technique à des fins d'information uniquement.",
+    disc_p2: "Rien ici ne constitue un conseil financier ou de trading.",
     disc_p3: 'Le trading de crypto-monnaies implique un risque de perte substantiel.',
-    disc_btn: 'J'AI COMPRIS',
+    disc_btn: "J'AI COMPRIS",
   },
   ru: {
     badge: 'GENLAYER · КОНСЕНСУС ЖЮРИ ИИ',
@@ -1431,8 +1431,8 @@ function applyLang(lang) {
   if (walletBtn && walletBtn.classList.contains('connected')) walletBtn.textContent = t.connected_btn;
 
   const analyzeBtn = document.getElementById('analyze-btn');
-  if (analyzeBtn && analyzeBtn.textContent !== t.processing_btn) {
-    if (!window.walletAddress) analyzeBtn.textContent = t.connect_btn.replace('CONNECT ', '').replace('VERBINDEN','') + '...';
+  if (analyzeBtn && analyzeBtn.textContent !== (TRANSLATIONS[currentLang]||TRANSLATIONS.en).processing_btn) {
+    if (!window.walletAddress) analyzeBtn.textContent = t.connect_btn;
     else analyzeBtn.textContent = t.analyze_btn;
   }
 
