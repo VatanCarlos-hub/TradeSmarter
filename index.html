@@ -828,8 +828,10 @@ async function fetchRealTA(coin, tf) {
   const ema200  = calcEMA(closes, 200);
   const macdR   = calcMACD(closes);
   const macdLine = macdR.macdLine, signal = macdR.signal, histogram = macdR.histogram;
-  const avgVol  = volumes.slice(-20).reduce(function(a,b){return a+b}, 0) / 20;
-  const curVol  = volumes[volumes.length - 1];
+  // Use last COMPLETED candle for volume (index -2)
+  // Current candle (-1) is still forming — its volume is always artificially low
+  const curVol  = volumes[volumes.length - 2];
+  const avgVol  = volumes.slice(-21, -1).reduce(function(a,b){return a+b}, 0) / 20;
   const volRatioRaw = curVol / avgVol;
   const volRatio = (volRatioRaw * 100).toFixed(0);
   const sr = findSwingHighsLows(highs, lows, 5);
@@ -838,8 +840,31 @@ async function fetchRealTA(coin, tf) {
   const md = minD[tf] || 0.02;
   const s1 = supports.find(function(s){return s < price*(1-md)})    || price*(1-md*1.5);
   const s2 = supports.find(function(s){return s < s1*(1-md*0.4)})   || s1*(1-md*1.2);
-  const r1 = resistances.find(function(r){return r > price*(1+md)}) || price*(1+md*1.5);
-  const r2 = resistances.find(function(r){return r > r1*(1+md*0.4)})|| r1*(1+md*1.2);
+
+  // For resistance: prefer EMA50/EMA200 as first barrier in downtrends if no nearby swing high
+  // EMA50 and EMA200 above price are real resistance levels traders watch
+  var r1Swing = resistances.find(function(r){return r > price*(1+md)});
+  var r1;
+  if (r1Swing && r1Swing <= Math.min(ema50, ema200) * 1.02) {
+    // Swing high is near or below EMAs — use it
+    r1 = r1Swing;
+  } else if (ema50 > price * (1 + md * 0.3) && ema50 < price * (1 + md * 4)) {
+    // EMA50 is above price and closer — use as first resistance
+    r1 = ema50;
+  } else if (ema200 > price * (1 + md * 0.3) && ema200 < price * (1 + md * 4)) {
+    r1 = ema200;
+  } else {
+    r1 = r1Swing || price * (1 + md * 1.5);
+  }
+
+  var r2Swing = resistances.find(function(r){return r > r1 * (1 + md * 0.2)});
+  var r2;
+  if (ema200 > r1 * (1 + md * 0.2) && ema200 < r1 * (1 + md * 6)) {
+    // EMA200 above r1 — use as second resistance
+    r2 = (r2Swing && r2Swing < ema200) ? r2Swing : ema200;
+  } else {
+    r2 = r2Swing || r1 * (1 + md * 1.2);
+  }
   const dt1 = s2;
   const dt2 = supports.find(function(s){return s < s2*(1-md*0.3)})  || s2*(1-md*1.0);
   const bt1 = r1, bt2 = r2;
