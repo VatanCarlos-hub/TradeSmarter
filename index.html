@@ -864,9 +864,12 @@ async function fetchRealTA(coin, tf) {
     r1 = emaR1 || r1Swing || price*(1+md*1.4);
   }
 
-  // R2: next meaningful level above R1
-  var r2Candidates = [emaR2, r2Swing].filter(function(x){ return x && x >= r1*(1+md*0.4); });
-  r2 = r2Candidates.length > 0 ? Math.min.apply(null, r2Candidates) : r1*(1+md*1.2);
+  // R2: must be at least md away from R1 — no duplicate levels
+  var r2Candidates = [emaR2, r2Swing].filter(function(x){ return x && x >= r1*(1+md); });
+  r2 = r2Candidates.length > 0 ? Math.min.apply(null, r2Candidates) : r1*(1+md*1.5);
+
+  // S2: must be at least md away from S1
+  if (s2 >= s1*(1-md*0.3)) s2 = s1*(1-md*1.0);
   const dt1 = s2;
   const dt2 = supports.find(function(s){return s < s2*(1-md*0.3)})  || s2*(1-md*1.0);
   const bt1 = r1, bt2 = r2;
