@@ -847,9 +847,12 @@ function findSwingHighsLows(h, l, n) {
 async function fetchRealTA(coin, tf) {
   const sym = SYMBOLS[coin] || coin + 'USDT';
   const interval = BINANCE_INTERVALS[tf] || '4h';
-  const res = await fetch('https://api.binance.com/api/v3/klines?symbol=' + sym + '&interval=' + interval + '&limit=200');
+  // 1W and 1M have fewer available candles on Binance
+  const limit = (tf === '1w' || tf === '1m') ? 100 : 200;
+  const res = await fetch('https://api.binance.com/api/v3/klines?symbol=' + sym + '&interval=' + interval + '&limit=' + limit);
   if (!res.ok) throw new Error('Binance error: ' + res.status);
   const klines = await res.json();
+  if (!klines || klines.length < 10) throw new Error('Not enough candle data for ' + sym + ' ' + interval);
   const highs   = klines.map(function(k){return parseFloat(k[2])});
   const lows    = klines.map(function(k){return parseFloat(k[3])});
   const closes  = klines.map(function(k){return parseFloat(k[4])});
@@ -866,7 +869,9 @@ async function fetchRealTA(coin, tf) {
   const avgVol  = volumes.slice(-21, -1).reduce(function(a,b){return a+b}, 0) / 20;
   const volRatioRaw = curVol / avgVol;
   const volRatio = (volRatioRaw * 100).toFixed(0);
-  const sr = findSwingHighsLows(highs, lows, 5);
+  // Reduce swing window for smaller datasets (1W/1M)
+  const swingN = klines.length < 50 ? 3 : 5;
+  const sr = findSwingHighsLows(highs, lows, swingN);
   const supports = sr.supports, resistances = sr.resistances;
   // Minimum distance per timeframe — strict, no micro-levels
   const minD = {'1h':0.008,'2h':0.012,'4h':0.018,'8h':0.024,'12h':0.030,'1d':0.045,'1w':0.07,'1m':0.10};
@@ -874,7 +879,7 @@ async function fetchRealTA(coin, tf) {
 
   // Support: must be meaningfully below current price
   const s1 = supports.find(function(s){ return s <= price*(1-md); }) || price*(1-md*1.4);
-  const s2 = supports.find(function(s){ return s <= price*(1-md*1.8); }) || s1*(1-md*0.9);
+  let s2 = supports.find(function(s){ return s <= price*(1-md*1.8); }) || s1*(1-md*0.9);
 
   // Resistance: EMA50/EMA200 are priority levels if above price
   // Only use swing high if it's meaningfully above price AND above any EMA
@@ -989,7 +994,7 @@ async function analyze() {
     const txHash = await client.writeContract({
       address:      CONTRACT,
       functionName: 'request_analysis',
-      args:         [selectedCoin, selectedTf, JSON.stringify(ta)],
+      args:         [selectedCoin, selectedTf, JSON.stringify(ta), window.currentLang || 'en'],
     });
 
     setPhase('AI Jury deliberating — waiting for consensus...');
@@ -1407,11 +1412,13 @@ const TRANSLATIONS = {
   },
 };
 
-let currentLang = 'en';
+window.currentLang = 'en';
+let currentLang = window.currentLang;
 
 function applyLang(lang) {
   const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
   currentLang = lang;
+  window.currentLang = lang;
 
   // Direction for Arabic
   document.body.style.direction = lang === 'ar' ? 'rtl' : 'ltr';
@@ -1476,7 +1483,8 @@ document.querySelectorAll('.lang-btn').forEach(function(btn) {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.lang-btn').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
-    applyLang(btn.dataset.lang);
+    window.currentLang = btn.dataset.lang;
+    if (typeof applyLang === 'function') applyLang(btn.dataset.lang);
   });
 });
 
