@@ -676,324 +676,433 @@
 </div>
 
 <script>
-// ── WALLET (pure MetaMask — no external dependencies) ──
-window.walletAddress = null;
-window.glClient = null;
+// ══════════════════════════════════════════════
+//  ALPHA SIGNAL — Single Script, No Module Deps
+// ══════════════════════════════════════════════
+const CONTRACT = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
+const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
+const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
+const STUDIO_RPC = 'https://studio.genlayer.com/api';
 
+let walletAddress = null;
+let selectedCoin  = 'BTC';
+let selectedTf    = '4h';
+let timerInterval = null;
+let elapsed       = 0;
+
+// ── WALLET ────────────────────────────────────
 document.getElementById('wallet-btn').addEventListener('click', async () => {
   if (!window.ethereum) {
-    document.getElementById('status-msg').textContent = 'MetaMask not detected. Please install MetaMask.';
-    document.getElementById('status-msg').className = 'status-msg error';
-    document.getElementById('status-msg').style.display = 'block';
+    showStatus('MetaMask not detected. Please install MetaMask.', true);
     return;
   }
   try {
     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-    window.walletAddress = accounts[0];
-    document.getElementById('wallet-addr').textContent = window.walletAddress.slice(0,6) + '...' + window.walletAddress.slice(-4);
+    walletAddress = accounts[0];
+    document.getElementById('wallet-addr').textContent = walletAddress.slice(0,6) + '...' + walletAddress.slice(-4);
     document.getElementById('wallet-dot').classList.add('connected');
     const btn = document.getElementById('wallet-btn');
     btn.textContent = 'CONNECTED'; btn.classList.add('connected');
     const cta = document.getElementById('analyze-btn');
     cta.disabled = false; cta.textContent = 'REQUEST ANALYSIS';
-    if (window.fetchLiveBadge) window.fetchLiveBadge(window.selectedCoin || 'BTC');
+    fetchLiveBadge(selectedCoin);
   } catch(e) {
-    document.getElementById('status-msg').textContent = 'Connection failed: ' + (e.message || String(e));
-    document.getElementById('status-msg').className = 'status-msg error';
-    document.getElementById('status-msg').style.display = 'block';
-    console.error(e);
+    showStatus('Connection failed: ' + (e.message || String(e)), true);
   }
 });
-</script>
 
-<script type="module">
-import { createClient } from 'https://esm.sh/genlayer-js@latest';
-import { studionet }   from 'https://esm.sh/genlayer-js@latest/chains';
-import { TransactionStatus } from 'https://esm.sh/genlayer-js@latest/types';
-
-const CONTRACT = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
-const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
-const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
-
-window.selectedCoin = 'BTC';
-let selectedTf = '4h';
-let timerInterval = null, elapsed = 0;
-
-function getClient() {
-  if (!window.glClient && window.walletAddress) {
-    window.glClient = createClient({ chain: studionet, account: window.walletAddress });
-  }
-  return window.glClient;
-}
-// Quick coins
-document.querySelectorAll('.qc').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('.qc').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');window.selectedCoin=b.dataset.coin;
-  document.getElementById('coin-input').value=window.selectedCoin;
-  if(window.walletAddress)fetchLiveBadge(window.selectedCoin);
+// ── COIN SELECTION ────────────────────────────
+document.querySelectorAll('.qc').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.qc').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  selectedCoin = b.dataset.coin;
+  document.getElementById('coin-input').value = selectedCoin;
+  document.getElementById('live-badge').style.display = 'none';
+  if (walletAddress) fetchLiveBadge(selectedCoin);
 }));
-document.getElementById('coin-input').addEventListener('input',e=>{
-  const v=e.target.value.toUpperCase();e.target.value=v;window.selectedCoin=v;
-  document.querySelectorAll('.qc').forEach(b=>b.classList.toggle('active',b.dataset.coin===v));
+
+document.getElementById('coin-input').addEventListener('input', e => {
+  const v = e.target.value.toUpperCase();
+  e.target.value = v; selectedCoin = v;
+  document.querySelectorAll('.qc').forEach(b => b.classList.toggle('active', b.dataset.coin === v));
+  document.getElementById('live-badge').style.display = 'none';
 });
-document.getElementById('coin-input').addEventListener('blur',()=>{if(window.walletAddress&&window.selectedCoin)fetchLiveBadge(window.selectedCoin)});
-document.getElementById('coin-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&window.walletAddress)analyze()});
-document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('.tf-btn').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');selectedTf=b.dataset.tf;
-}));
-document.getElementById('analyze-btn').addEventListener('click',analyze);
 
-window.fetchLiveBadge = async function fetchLiveBadge(coin){
-  const sym=SYMBOLS[coin]||coin+'USDT';
-  try{
-    const r=await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym}`);
-    const d=await r.json();
-    if(d.lastPrice){
-      const p=parseFloat(d.lastPrice),ch=parseFloat(d.priceChangePercent);
-      document.getElementById('live-price-val').textContent='$'+fmt(p);
-      const el=document.getElementById('live-change-val');
-      el.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'%';
-      el.className='live-change '+(ch>=0?'up':'down');
-      document.getElementById('live-badge').style.display='flex';
+document.getElementById('coin-input').addEventListener('blur', () => {
+  if (walletAddress && selectedCoin) fetchLiveBadge(selectedCoin);
+});
+
+document.getElementById('coin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && walletAddress) analyze();
+});
+
+// ── TIMEFRAME ─────────────────────────────────
+document.querySelectorAll('.tf-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.tf-btn').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  selectedTf = b.dataset.tf;
+}));
+
+document.getElementById('analyze-btn').addEventListener('click', analyze);
+
+// ── LIVE BADGE ────────────────────────────────
+async function fetchLiveBadge(coin) {
+  const sym = SYMBOLS[coin] || coin + 'USDT';
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=' + sym);
+    const d = await r.json();
+    if (d.lastPrice) {
+      const p = parseFloat(d.lastPrice), ch = parseFloat(d.priceChangePercent);
+      document.getElementById('live-price-val').textContent = '$' + fmt(p);
+      const el = document.getElementById('live-change-val');
+      el.textContent = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '%';
+      el.className = 'live-change ' + (ch >= 0 ? 'up' : 'down');
+      document.getElementById('live-badge').style.display = 'flex';
     }
-  }catch(e){}
+  } catch(e) {}
 }
 
-// TA calculations
-function calcEMA(c,p){const k=2/(p+1);let e=c.slice(0,p).reduce((a,b)=>a+b,0)/p;for(let i=p;i<c.length;i++)e=c[i]*k+e*(1-k);return e}
-function calcRSI(c,p=14){let g=0,l=0;for(let i=1;i<=p;i++){const d=c[i]-c[i-1];d>0?g+=d:l-=d}let ag=g/p,al=l/p;for(let i=p+1;i<c.length;i++){const d=c[i]-c[i-1];ag=(ag*(p-1)+(d>0?d:0))/p;al=(al*(p-1)+(d<0?-d:0))/p}return al===0?100:100-(100/(1+ag/al))}
-function calcMACD(c){const m12=calcEMA(c,12),m26=calcEMA(c,26),ml=m12-m26;const ms=[];for(let i=26;i<=c.length;i++)ms.push(calcEMA(c.slice(0,i),12)-calcEMA(c.slice(0,i),26));const sig=calcEMA(ms,9);return{macdLine:ml,signal:sig,histogram:ml-sig}}
-function findSwingHighsLows(h,l,n=5){const s=[],r=[];for(let i=n;i<l.length-n;i++){const sl=l.slice(i-n,i+n+1);if(l[i]===Math.min(...sl))s.push(l[i])}for(let i=n;i<h.length-n;i++){const sh=h.slice(i-n,i+n+1);if(h[i]===Math.max(...sh))r.push(h[i])}s.sort((a,b)=>b-a);r.sort((a,b)=>a-b);return{supports:s,resistances:r}}
+// ── TA CALCULATIONS ───────────────────────────
+function calcEMA(c, p) {
+  const k = 2 / (p + 1);
+  let e = c.slice(0, p).reduce((a, b) => a + b, 0) / p;
+  for (let i = p; i < c.length; i++) e = c[i] * k + e * (1 - k);
+  return e;
+}
 
-async function fetchRealTA(coin,tf){
-  const sym=SYMBOLS[coin]||coin+'USDT';
-  const interval=BINANCE_INTERVALS[tf]||'4h';
-  const res=await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${interval}&limit=200`);
-  if(!res.ok)throw new Error('Binance error: '+res.status);
-  const klines=await res.json();
-  const highs=klines.map(k=>parseFloat(k[2])),lows=klines.map(k=>parseFloat(k[3]));
-  const closes=klines.map(k=>parseFloat(k[4])),volumes=klines.map(k=>parseFloat(k[5]));
-  const price=closes[closes.length-1];
-  const rsi=calcRSI(closes,14);
-  const ema50=calcEMA(closes,50),ema200=calcEMA(closes,200);
-  const{macdLine,signal,histogram}=calcMACD(closes);
-  const avgVol=volumes.slice(-20).reduce((a,b)=>a+b,0)/20;
-  const curVol=volumes[volumes.length-1];
-  const volRatio=(curVol/avgVol*100).toFixed(0);
-  const{supports,resistances}=findSwingHighsLows(highs,lows,5);
+function calcRSI(c, p) {
+  p = p || 14;
+  let g = 0, l = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = c[i] - c[i-1];
+    d > 0 ? g += d : l -= d;
+  }
+  let ag = g / p, al = l / p;
+  for (let i = p + 1; i < c.length; i++) {
+    const d = c[i] - c[i-1];
+    ag = (ag * (p-1) + (d > 0 ? d : 0)) / p;
+    al = (al * (p-1) + (d < 0 ? -d : 0)) / p;
+  }
+  return al === 0 ? 100 : 100 - (100 / (1 + ag / al));
+}
 
-  // Timeframe-aware minimum distances — no meaningless micro-levels
-  const minD={'1h':0.006,'2h':0.009,'4h':0.014,'8h':0.018,'12h':0.022,'1d':0.032,'1w':0.055,'1m':0.09};
-  const md=minD[tf]||0.02;
+function calcMACD(c) {
+  const m12 = calcEMA(c, 12), m26 = calcEMA(c, 26);
+  const macdLine = m12 - m26;
+  const ms = [];
+  for (let i = 26; i <= c.length; i++)
+    ms.push(calcEMA(c.slice(0, i), 12) - calcEMA(c.slice(0, i), 26));
+  const sig = calcEMA(ms, 9);
+  return { macdLine, signal: sig, histogram: macdLine - sig };
+}
 
-  // Support: must be at least minDist% BELOW current price
-  const s1=supports.find(s=>s<price*(1-md))||price*(1-md*1.5);
-  const s2=supports.find(s=>s<s1*(1-md*0.4))||s1*(1-md*1.2);
+function findSwingHighsLows(h, l, n) {
+  n = n || 5;
+  const s = [], r = [];
+  for (let i = n; i < l.length - n; i++) {
+    const sl = l.slice(i-n, i+n+1);
+    if (l[i] === Math.min.apply(null, sl)) s.push(l[i]);
+  }
+  for (let i = n; i < h.length - n; i++) {
+    const sh = h.slice(i-n, i+n+1);
+    if (h[i] === Math.max.apply(null, sh)) r.push(h[i]);
+  }
+  s.sort(function(a,b){return b-a});
+  r.sort(function(a,b){return a-b});
+  return { supports: s, resistances: r };
+}
 
-  // Resistance: must be at least minDist% ABOVE current price
-  const r1=resistances.find(r=>r>price*(1+md))||price*(1+md*1.5);
-  const r2=resistances.find(r=>r>r1*(1+md*0.4))||r1*(1+md*1.2);
-
-  // Bear targets = BEYOND supports (what happens after support breaks)
-  // bt1/bt2 = bull targets = resistance levels (correct — price aims for resistance)
-  // dt1 = s2 (after s1 breaks, next level is s2)
-  // dt2 = next swing low below s2
-  const dt1=s2;
-  const dt2=supports.find(s=>s<s2*(1-md*0.3))||s2*(1-md*1.0);
-  const bt1=r1;
-  const bt2=r2;
-
-  // Volume ratio as decimal for contract
-  const volRatioRaw=(curVol/avgVol);
-  const volRatio=(volRatioRaw*100).toFixed(0);
-
-  const price24hAgo=closes[closes.length-24]||closes[0];
-  const change24h=((price-price24hAgo)/price24hAgo*100).toFixed(2);
-  const pct=(a,b)=>(((a-b)/b)*100).toFixed(2);
-  return{
-    current_price:price.toFixed(2),support_1:s1.toFixed(2),support_2:s2.toFixed(2),
-    resistance_1:r1.toFixed(2),resistance_2:r2.toFixed(2),
-    bull_target_1:bt1.toFixed(2),bull_target_2:bt2.toFixed(2),
-    bear_target_1:dt1.toFixed(2),bear_target_2:dt2.toFixed(2),
-    bull_gain_1:'+'+pct(bt1,price)+'%',bull_gain_2:'+'+pct(bt2,price)+'%',
-    bear_loss_1:pct(dt1,price)+'%',bear_loss_2:pct(dt2,price)+'%',
-    volume_ratio_raw:volRatioRaw.toFixed(3),
-    rsi:rsi.toFixed(1),ema50:ema50.toFixed(2),ema200:ema200.toFixed(2),
-    ema_cross:ema50>ema200?'EMA50 above EMA200 (golden cross — bullish)':'EMA50 below EMA200 (death cross — bearish)',
-    macd:macdLine.toFixed(4),macd_signal:signal.toFixed(4),macd_hist:histogram.toFixed(4),
-    macd_status:histogram>0?'Histogram positive (bullish momentum)':'Histogram negative (bearish momentum)',
-    volume:curVol.toFixed(0),volume_avg20:avgVol.toFixed(0),
-    volume_vs_avg:volRatio+'% of 20-period average',
-    volume_ratio:volRatioRaw.toFixed(3),
-    change_24h:change24h,
-    price_vs_ema50:((price-ema50)/ema50*100).toFixed(2)+'% from EMA50',
-    price_vs_ema200:((price-ema200)/ema200*100).toFixed(2)+'% from EMA200',
+async function fetchRealTA(coin, tf) {
+  const sym = SYMBOLS[coin] || coin + 'USDT';
+  const interval = BINANCE_INTERVALS[tf] || '4h';
+  const res = await fetch('https://api.binance.com/api/v3/klines?symbol=' + sym + '&interval=' + interval + '&limit=200');
+  if (!res.ok) throw new Error('Binance error: ' + res.status);
+  const klines = await res.json();
+  const highs   = klines.map(function(k){return parseFloat(k[2])});
+  const lows    = klines.map(function(k){return parseFloat(k[3])});
+  const closes  = klines.map(function(k){return parseFloat(k[4])});
+  const volumes = klines.map(function(k){return parseFloat(k[5])});
+  const price   = closes[closes.length - 1];
+  const rsi     = calcRSI(closes, 14);
+  const ema50   = calcEMA(closes, 50);
+  const ema200  = calcEMA(closes, 200);
+  const macdR   = calcMACD(closes);
+  const macdLine = macdR.macdLine, signal = macdR.signal, histogram = macdR.histogram;
+  const avgVol  = volumes.slice(-20).reduce(function(a,b){return a+b}, 0) / 20;
+  const curVol  = volumes[volumes.length - 1];
+  const volRatioRaw = curVol / avgVol;
+  const volRatio = (volRatioRaw * 100).toFixed(0);
+  const sr = findSwingHighsLows(highs, lows, 5);
+  const supports = sr.supports, resistances = sr.resistances;
+  const minD = {'1h':0.006,'2h':0.009,'4h':0.014,'8h':0.018,'12h':0.022,'1d':0.032,'1w':0.055,'1m':0.09};
+  const md = minD[tf] || 0.02;
+  const s1 = supports.find(function(s){return s < price*(1-md)})    || price*(1-md*1.5);
+  const s2 = supports.find(function(s){return s < s1*(1-md*0.4)})   || s1*(1-md*1.2);
+  const r1 = resistances.find(function(r){return r > price*(1+md)}) || price*(1+md*1.5);
+  const r2 = resistances.find(function(r){return r > r1*(1+md*0.4)})|| r1*(1+md*1.2);
+  const dt1 = s2;
+  const dt2 = supports.find(function(s){return s < s2*(1-md*0.3)})  || s2*(1-md*1.0);
+  const bt1 = r1, bt2 = r2;
+  const price24hAgo = closes[closes.length - 24] || closes[0];
+  const change24h = ((price - price24hAgo) / price24hAgo * 100).toFixed(2);
+  function pct(a, b) { return (((a-b)/b)*100).toFixed(2); }
+  return {
+    current_price:  price.toFixed(2),
+    support_1:      s1.toFixed(2),    support_2:  s2.toFixed(2),
+    resistance_1:   r1.toFixed(2),    resistance_2: r2.toFixed(2),
+    bull_target_1:  bt1.toFixed(2),   bull_target_2: bt2.toFixed(2),
+    bear_target_1:  dt1.toFixed(2),   bear_target_2: dt2.toFixed(2),
+    bull_gain_1:    '+' + pct(bt1, price) + '%',
+    bull_gain_2:    '+' + pct(bt2, price) + '%',
+    bear_loss_1:    pct(dt1, price) + '%',
+    bear_loss_2:    pct(dt2, price) + '%',
+    volume_ratio_raw: volRatioRaw.toFixed(3),
+    rsi:            rsi.toFixed(1),
+    ema50:          ema50.toFixed(2),
+    ema200:         ema200.toFixed(2),
+    ema_cross:      ema50 > ema200 ? 'EMA50 above EMA200 (golden cross — bullish)' : 'EMA50 below EMA200 (death cross — bearish)',
+    macd:           macdLine.toFixed(4),
+    macd_signal:    signal.toFixed(4),
+    macd_hist:      histogram.toFixed(4),
+    macd_status:    histogram > 0 ? 'Histogram positive (bullish momentum)' : 'Histogram negative (bearish momentum)',
+    volume:         curVol.toFixed(0),
+    volume_avg20:   avgVol.toFixed(0),
+    volume_vs_avg:  volRatio + '% of 20-period average',
+    volume_ratio:   volRatioRaw.toFixed(3),
+    change_24h:     change24h,
+    price_vs_ema50:  ((price - ema50)  / ema50  * 100).toFixed(2) + '% from EMA50',
+    price_vs_ema200: ((price - ema200) / ema200 * 100).toFixed(2) + '% from EMA200',
   };
 }
 
-async function analyze(){
-  if(!window.walletAddress||!window.selectedCoin.trim())return;
-  const btn=document.getElementById('analyze-btn');
-  btn.disabled=true;btn.textContent='PROCESSING...';
-  document.getElementById('result').style.display='none';
-  document.getElementById('loading').style.display='block';
-  showStatus('');startTimer();
-  setTimeout(()=>document.getElementById('loading').scrollIntoView({behavior:'smooth',block:'center'}),100);
-  try{
+// ── GenLayer RPC calls (no SDK needed) ────────
+async function glWrite(funcName, args) {
+  // Use eth_sendTransaction directly via MetaMask to GenLayer Studio RPC
+  // Encode function call as JSON-RPC
+  const payload = {
+    jsonrpc: '2.0', id: Date.now(), method: 'eth_sendTransaction',
+    params: [{ from: walletAddress, to: CONTRACT, data: JSON.stringify({ function: funcName, args: args }) }]
+  };
+  const res = await fetch(STUDIO_RPC, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(JSON.stringify(json.error));
+  return json.result;
+}
+
+async function glRead(funcName, args) {
+  const payload = {
+    jsonrpc: '2.0', id: Date.now(), method: 'eth_call',
+    params: [{ to: CONTRACT, data: JSON.stringify({ function: funcName, args: args || [] }) }, 'latest']
+  };
+  const res = await fetch(STUDIO_RPC, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(JSON.stringify(json.error));
+  return json.result;
+}
+
+async function waitFinalized(txHash) {
+  for (let i = 0; i < 60; i++) {
+    await new Promise(function(r){setTimeout(r, 5000)});
+    const payload = {
+      jsonrpc: '2.0', id: Date.now(), method: 'eth_getTransactionReceipt',
+      params: [txHash]
+    };
+    const res = await fetch(STUDIO_RPC, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await res.json();
+    if (json.result && json.result.status) return json.result;
+  }
+  throw new Error('Transaction timed out after 5 minutes');
+}
+
+// ── ANALYZE ───────────────────────────────────
+async function analyze() {
+  if (!walletAddress || !selectedCoin.trim()) return;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true; btn.textContent = 'PROCESSING...';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  showStatus(''); startTimer();
+  setTimeout(function(){document.getElementById('loading').scrollIntoView({behavior:'smooth',block:'center'})}, 100);
+  try {
     setPhase('Fetching Binance OHLCV data...');
-    const ta=await fetchRealTA(window.selectedCoin,selectedTf);
-    setPhase(`Price $${fmt(ta.current_price)} · RSI ${ta.rsi} · Submitting to GenLayer...`);
-    const txHash=await getClient().writeContract({
-      address:CONTRACT,
-      functionName:'request_analysis',
-      args:[window.selectedCoin,selectedTf,JSON.stringify(ta)],
-    });
-    setPhase('Transaction submitted — AI Jury interpreting real indicators...');
-    await getClient().waitForTransactionReceipt({
-      hash:txHash,
-      status:TransactionStatus.FINALIZED,
-      retries:60,
-      interval:5000,
-    });
-    setPhase('Consensus reached — reading analysis...');
-    const raw=await getClient().readContract({
-      address:CONTRACT,
-      functionName:'get_result',
-      args:[window.walletAddress],
-    });
-    const data=typeof raw==='string'?JSON.parse(raw):raw;
-    if(data?.error)throw new Error(data.error);
-    stopTimer();document.getElementById('loading').style.display='none';
-    renderResult(data,ta);
-  }catch(e){
-    stopTimer();document.getElementById('loading').style.display='none';
-    showStatus('Error: '+(e.message||String(e)),true);console.error(e);
+    const ta = await fetchRealTA(selectedCoin, selectedTf);
+    setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · Submitting to GenLayer...');
+
+    // Try genlayer-js via dynamic import first, fallback to raw RPC
+    let raw;
+    try {
+      const glMod = await import('https://esm.sh/genlayer-js@0.5.0');
+      const chainsMod = await import('https://esm.sh/genlayer-js@0.5.0/chains');
+      const client = glMod.createClient({ chain: chainsMod.studionet, account: walletAddress });
+      const txHash = await client.writeContract({
+        address: CONTRACT,
+        functionName: 'request_analysis',
+        args: [selectedCoin, selectedTf, JSON.stringify(ta)],
+      });
+      setPhase('Transaction submitted — AI Jury interpreting indicators...');
+      await new Promise(function(r){setTimeout(r, 30000)}); // wait 30s for finalization
+      raw = await client.readContract({ address: CONTRACT, functionName: 'get_result', args: [walletAddress] });
+    } catch(sdkErr) {
+      console.warn('genlayer-js SDK failed, using raw RPC:', sdkErr);
+      setPhase('Submitting via RPC...');
+      const txHash = await glWrite('request_analysis', [selectedCoin, selectedTf, JSON.stringify(ta)]);
+      setPhase('Waiting for AI Jury consensus...');
+      await waitFinalized(txHash);
+      setPhase('Reading result...');
+      raw = await glRead('get_result', [walletAddress]);
+    }
+
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (data && data.error) throw new Error(data.error);
+    stopTimer();
+    document.getElementById('loading').style.display = 'none';
+    renderResult(data, ta);
+  } catch(e) {
+    stopTimer();
+    document.getElementById('loading').style.display = 'none';
+    showStatus('Error: ' + (e.message || String(e)), true);
+    console.error(e);
   }
-  btn.disabled=false;btn.textContent='REQUEST ANALYSIS';
+  btn.disabled = false; btn.textContent = 'REQUEST ANALYSIS';
 }
 
-function startTimer(){
-  elapsed=0;clearInterval(timerInterval);
-  timerInterval=setInterval(()=>{
+// ── TIMER ──────────────────────────────────────
+function startTimer() {
+  elapsed = 0; clearInterval(timerInterval);
+  timerInterval = setInterval(function() {
     elapsed++;
-    document.getElementById('timer').textContent=`${String(Math.floor(elapsed/60)).padStart(2,'0')}:${String(elapsed%60).padStart(2,'0')}`;
-  },1000);
+    document.getElementById('timer').textContent =
+      String(Math.floor(elapsed/60)).padStart(2,'0') + ':' + String(elapsed%60).padStart(2,'0');
+  }, 1000);
 }
-function stopTimer(){clearInterval(timerInterval)}
-function setPhase(m){document.getElementById('loading-phase').textContent=m}
+function stopTimer() { clearInterval(timerInterval); }
+function setPhase(m) { document.getElementById('loading-phase').textContent = m; }
 
-function fmt(n){
-  if(n==null||n==='')return '—';
-  const num=parseFloat(String(n).replace(/,/g,''));
-  if(isNaN(num))return String(n);
-  if(num<1)return num.toFixed(4);
-  if(num<10)return num.toFixed(3);
-  if(num<100)return num.toFixed(2);
-  return new Intl.NumberFormat('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}).format(num);
-}
-
-function pctDiff(a,b){return(((parseFloat(a)-parseFloat(b))/parseFloat(b))*100).toFixed(2)}
-
-function showStatus(msg,isError=false){
-  const el=document.getElementById('status-msg');
-  if(!msg){el.style.display='none';return}
-  el.textContent=msg;el.className='status-msg'+(isError?' error':'');el.style.display='block';
+// ── HELPERS ────────────────────────────────────
+function fmt(n) {
+  if (n == null || n === '') return '—';
+  const num = parseFloat(String(n).replace(/,/g,''));
+  if (isNaN(num)) return String(n);
+  if (num < 1)   return num.toFixed(4);
+  if (num < 10)  return num.toFixed(3);
+  if (num < 100) return num.toFixed(2);
+  return new Intl.NumberFormat('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}).format(num);
 }
 
-function renderResult(d,ta){
-  const tc={bullish:{icon:'▲',cls:'bullish'},bearish:{icon:'▼',cls:'bearish'},neutral:{icon:'◆',cls:'neutral'}};
-  const trend=tc[d.trend]||{icon:'—',cls:'neutral'};
+function pctDiff(a, b) {
+  return (((parseFloat(a) - parseFloat(b)) / parseFloat(b)) * 100).toFixed(2);
+}
 
-  // Hero
-  document.getElementById('r-tf').textContent=selectedTf.toUpperCase()+' ANALYSIS';
-  document.getElementById('r-coin').textContent=window.selectedCoin;
-  document.getElementById('r-price').textContent='$'+fmt(ta.current_price);
-  const ch=parseFloat(ta.change_24h||0);
-  const chEl=document.getElementById('r-change');
-  chEl.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% 24h';
-  chEl.className='result-hero-change '+(ch>=0?'up':'down');
-  const tb=document.getElementById('r-trend-badge');
-  tb.className='trend-badge '+trend.cls;
-  document.getElementById('r-trend-icon').textContent=trend.icon;
-  document.getElementById('r-trend-text').textContent=(d.trend||'NEUTRAL').toUpperCase();
-  document.getElementById('r-trend-reason').textContent=d.trend_reason||'';
+function showStatus(msg, isError) {
+  const el = document.getElementById('status-msg');
+  if (!msg) { el.style.display = 'none'; return; }
+  el.textContent = msg;
+  el.className = 'status-msg' + (isError ? ' error' : '');
+  el.style.display = 'block';
+}
 
-  // Insight
-  if(d.key_insight){
-    document.getElementById('r-insight').textContent=d.key_insight;
-    document.getElementById('insight-card').style.display='block';
+// ── RENDER RESULT ──────────────────────────────
+function renderResult(d, ta) {
+  const trendColors = {bullish:'#d4a843', bearish:'#c07070', neutral:'#8a7d60'};
+  const tc = {bullish:{icon:'▲',cls:'bullish'}, bearish:{icon:'▼',cls:'bearish'}, neutral:{icon:'◆',cls:'neutral'}};
+  const trend = tc[d.trend] || {icon:'—',cls:'neutral'};
+
+  document.getElementById('r-tf').textContent    = selectedTf.toUpperCase() + ' ANALYSIS';
+  document.getElementById('r-coin').textContent  = selectedCoin;
+  document.getElementById('r-price').textContent = '$' + fmt(ta.current_price);
+
+  const ch = parseFloat(ta.change_24h || 0);
+  const chEl = document.getElementById('r-change');
+  chEl.textContent  = (ch >= 0 ? '+' : '') + ch.toFixed(2) + '% 24h';
+  chEl.className    = 'result-hero-change ' + (ch >= 0 ? 'up' : 'down');
+
+  const tb = document.getElementById('r-trend-badge');
+  tb.className = 'trend-badge ' + trend.cls;
+  document.getElementById('r-trend-icon').textContent   = trend.icon;
+  document.getElementById('r-trend-text').textContent   = (d.trend || 'NEUTRAL').toUpperCase();
+  document.getElementById('r-trend-reason').textContent = d.trend_reason || '';
+
+  if (d.key_insight) {
+    document.getElementById('r-insight').textContent = d.key_insight;
+    document.getElementById('insight-card').style.display = 'block';
   }
 
-  // Verdict
-  document.getElementById('r-verdict').textContent=d.verdict||'—';
-  const cb=document.getElementById('r-confidence-badge');
-  const conf=d.confidence||'MEDIUM';
-  cb.textContent=conf;cb.className='confidence-badge '+conf;
+  document.getElementById('r-verdict').textContent     = d.verdict || '—';
+  const conf = d.confidence || 'MEDIUM';
+  const cb = document.getElementById('r-confidence-badge');
+  cb.textContent = conf; cb.className = 'confidence-badge ' + conf;
 
-  // Probabilities (vertical bars)
-  const bull=+(d.bull_probability||0),bear=+(d.bear_probability||0),neutral=+(d.neutral_probability||0);
-  setTimeout(()=>{
-    document.getElementById('pb-bull').style.height=bull+'%';
-    document.getElementById('pb-neutral').style.height=neutral+'%';
-    document.getElementById('pb-bear').style.height=bear+'%';
-  },150);
-  document.getElementById('p-bull').textContent=bull;
-  document.getElementById('p-neutral').textContent=neutral;
-  document.getElementById('p-bear').textContent=bear;
+  const bull = +(d.bull_probability||0), bear = +(d.bear_probability||0), neutral = +(d.neutral_probability||0);
+  setTimeout(function() {
+    document.getElementById('pb-bull').style.height    = bull + '%';
+    document.getElementById('pb-neutral').style.height = neutral + '%';
+    document.getElementById('pb-bear').style.height    = bear + '%';
+  }, 150);
+  document.getElementById('p-bull').textContent    = bull;
+  document.getElementById('p-neutral').textContent = neutral;
+  document.getElementById('p-bear').textContent    = bear;
 
-  // Key levels
-  const p=parseFloat(ta.current_price);
-  document.getElementById('r-current').textContent='$'+fmt(ta.current_price);
-  document.getElementById('r-s1').textContent='$'+fmt(ta.support_1);
-  document.getElementById('r-s1-dist').textContent=pctDiff(ta.support_1,ta.current_price)+'% from current';
-  document.getElementById('r-s2').textContent='$'+fmt(ta.support_2);
-  document.getElementById('r-s2-dist').textContent=pctDiff(ta.support_2,ta.current_price)+'% from current';
-  document.getElementById('r-r1').textContent='$'+fmt(ta.resistance_1);
-  document.getElementById('r-r1-dist').textContent='+'+pctDiff(ta.resistance_1,ta.current_price)+'% from current';
-  document.getElementById('r-r2').textContent='$'+fmt(ta.resistance_2);
-  document.getElementById('r-r2-dist').textContent='+'+pctDiff(ta.resistance_2,ta.current_price)+'% from current';
+  document.getElementById('r-current').textContent  = '$' + fmt(ta.current_price);
+  document.getElementById('r-s1').textContent = '$' + fmt(ta.support_1);
+  document.getElementById('r-s1-dist').textContent = pctDiff(ta.support_1, ta.current_price) + '% from current';
+  document.getElementById('r-s2').textContent = '$' + fmt(ta.support_2);
+  document.getElementById('r-s2-dist').textContent = pctDiff(ta.support_2, ta.current_price) + '% from current';
+  document.getElementById('r-r1').textContent = '$' + fmt(ta.resistance_1);
+  document.getElementById('r-r1-dist').textContent = '+' + pctDiff(ta.resistance_1, ta.current_price) + '% from current';
+  document.getElementById('r-r2').textContent = '$' + fmt(ta.resistance_2);
+  document.getElementById('r-r2-dist').textContent = '+' + pctDiff(ta.resistance_2, ta.current_price) + '% from current';
 
-  // Scenarios
-  document.getElementById('r-bull-prob').textContent=bull+'%';
-  document.getElementById('r-bear-prob').textContent=bear+'%';
-  document.getElementById('r-bt1').textContent='$'+fmt(ta.bull_target_1);
-  document.getElementById('r-bg1').textContent=ta.bull_gain_1||'—';
-  document.getElementById('r-bt2').textContent='$'+fmt(ta.bull_target_2);
-  document.getElementById('r-bg2').textContent=ta.bull_gain_2||'—';
-  document.getElementById('r-bcond').textContent=d.bull_condition||'—';
-  document.getElementById('r-dt1').textContent='$'+fmt(ta.bear_target_1);
-  document.getElementById('r-dg1').textContent=ta.bear_loss_1||'—';
-  document.getElementById('r-dt2').textContent='$'+fmt(ta.bear_target_2);
-  document.getElementById('r-dg2').textContent=ta.bear_loss_2||'—';
-  document.getElementById('r-dcond').textContent=d.bear_condition||'—';
+  document.getElementById('r-bull-prob').textContent = bull + '%';
+  document.getElementById('r-bear-prob').textContent = bear + '%';
+  document.getElementById('r-bt1').textContent  = fmt(ta.bull_target_1);
+  document.getElementById('r-bg1').textContent  = ta.bull_gain_1 || '';
+  document.getElementById('r-bt2').textContent  = fmt(ta.bull_target_2);
+  document.getElementById('r-bg2').textContent  = ta.bull_gain_2 || '';
+  document.getElementById('r-bcond').textContent = d.bull_condition || '—';
+  document.getElementById('r-dt1').textContent  = fmt(ta.bear_target_1);
+  document.getElementById('r-dg1').textContent  = ta.bear_loss_1 || '';
+  document.getElementById('r-dt2').textContent  = fmt(ta.bear_target_2);
+  document.getElementById('r-dg2').textContent  = ta.bear_loss_2 || '';
+  document.getElementById('r-dcond').textContent = d.bear_condition || '—';
 
-  // Indicators
-  const rsiVal=parseFloat(ta.rsi);
-  document.getElementById('r-rsi-val').textContent='RSI '+ta.rsi+(rsiVal>70?' — ⚠ Overbought':rsiVal<30?' — ⚠ Oversold':'');
-  setTimeout(()=>{
-    const pct=rsiVal;
-    const color=rsiVal>70?'#c07070':rsiVal<30?'#7eb87e':'var(--gold2)';
-    document.getElementById('rsi-fill').style.width=pct+'%';
-    document.getElementById('rsi-fill').style.background=color;
-    document.getElementById('rsi-marker').style.left=pct+'%';
-  },300);
-  document.getElementById('r-rsi-int').textContent=d.rsi_interpretation||'';
-  document.getElementById('r-macd-val').innerHTML=`<strong>Line ${ta.macd}</strong> · Signal ${ta.macd_signal} · Hist ${ta.macd_hist}`;
-  document.getElementById('r-macd-int').textContent=(d.macd_interpretation||'')+' · '+ta.macd_status;
-  document.getElementById('r-ema50').textContent='$'+fmt(ta.ema50);
-  document.getElementById('r-ema50-dist').textContent=ta.price_vs_ema50;
-  document.getElementById('r-ema200').textContent='$'+fmt(ta.ema200);
-  document.getElementById('r-ema200-dist').textContent=ta.price_vs_ema200;
-  document.getElementById('r-ema-cross').textContent=ta.ema_cross;
-  document.getElementById('r-ema-int').textContent=d.ema_interpretation||'';
-  document.getElementById('r-vol').innerHTML=`<strong>${fmt(ta.volume)}</strong> · ${ta.volume_vs_avg}`;
-  document.getElementById('r-vol-int').textContent=d.volume_interpretation||'';
+  const rsiVal = parseFloat(ta.rsi);
+  document.getElementById('r-rsi-val').textContent =
+    'RSI ' + ta.rsi + (rsiVal > 70 ? ' — ⚠ Overbought' : rsiVal < 30 ? ' — ⚠ Oversold' : '');
+  setTimeout(function() {
+    const color = rsiVal > 70 ? '#c07070' : rsiVal < 30 ? '#7eb87e' : '#b8922a';
+    document.getElementById('rsi-fill').style.width      = rsiVal + '%';
+    document.getElementById('rsi-fill').style.background = color;
+    document.getElementById('rsi-marker').style.left     = rsiVal + '%';
+  }, 300);
+  document.getElementById('r-rsi-int').textContent  = d.rsi_interpretation || '';
+  document.getElementById('r-macd-val').innerHTML   =
+    '<strong>Line ' + ta.macd + '</strong> · Signal ' + ta.macd_signal + ' · Hist ' + ta.macd_hist;
+  document.getElementById('r-macd-int').textContent =
+    (d.macd_interpretation || '') + ' · ' + ta.macd_status;
+  document.getElementById('r-ema50').textContent     = '$' + fmt(ta.ema50);
+  document.getElementById('r-ema50-dist').textContent = ta.price_vs_ema50;
+  document.getElementById('r-ema200').textContent    = '$' + fmt(ta.ema200);
+  document.getElementById('r-ema200-dist').textContent = ta.price_vs_ema200;
+  document.getElementById('r-ema-cross').textContent = ta.ema_cross;
+  document.getElementById('r-ema-int').textContent   = d.ema_interpretation || '';
+  document.getElementById('r-vol').innerHTML =
+    '<strong>' + fmt(ta.volume) + '</strong> · ' + ta.volume_vs_avg;
+  document.getElementById('r-vol-int').textContent = d.volume_interpretation || '';
 
-  document.getElementById('result').style.display='block';
-  setTimeout(()=>document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'}),100);
+  document.getElementById('result').style.display = 'block';
+  setTimeout(function() {
+    document.getElementById('result').scrollIntoView({behavior:'smooth', block:'start'});
+  }, 100);
 }
-
 </script>
 </body>
 </html>
