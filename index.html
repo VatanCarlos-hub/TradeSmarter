@@ -675,54 +675,76 @@
 
 </div>
 
+<script>
+// ── WALLET (pure MetaMask — no external dependencies) ──
+window.walletAddress = null;
+window.glClient = null;
+
+document.getElementById('wallet-btn').addEventListener('click', async () => {
+  if (!window.ethereum) {
+    document.getElementById('status-msg').textContent = 'MetaMask not detected. Please install MetaMask.';
+    document.getElementById('status-msg').className = 'status-msg error';
+    document.getElementById('status-msg').style.display = 'block';
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    window.walletAddress = accounts[0];
+    document.getElementById('wallet-addr').textContent = window.walletAddress.slice(0,6) + '...' + window.walletAddress.slice(-4);
+    document.getElementById('wallet-dot').classList.add('connected');
+    const btn = document.getElementById('wallet-btn');
+    btn.textContent = 'CONNECTED'; btn.classList.add('connected');
+    const cta = document.getElementById('analyze-btn');
+    cta.disabled = false; cta.textContent = 'REQUEST ANALYSIS';
+    if (window.fetchLiveBadge) window.fetchLiveBadge(window.selectedCoin || 'BTC');
+  } catch(e) {
+    document.getElementById('status-msg').textContent = 'Connection failed: ' + (e.message || String(e));
+    document.getElementById('status-msg').className = 'status-msg error';
+    document.getElementById('status-msg').style.display = 'block';
+    console.error(e);
+  }
+});
+</script>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/genlayer-js@latest';
 import { studionet }   from 'https://esm.sh/genlayer-js@latest/chains';
 import { TransactionStatus } from 'https://esm.sh/genlayer-js@latest/types';
 
-const CONTRACT  = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
+const CONTRACT = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
 
-let walletAddress=null,client=null,selectedCoin='BTC',selectedTf='4h';
-let timerInterval=null,elapsed=0;
+window.selectedCoin = 'BTC';
+let selectedTf = '4h';
+let timerInterval = null, elapsed = 0;
 
-// Wallet
-document.getElementById('wallet-btn').addEventListener('click',async()=>{
-  if(!window.ethereum){showStatus('MetaMask not detected.',true);return}
-  try{
-    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
-    walletAddress=accounts[0];
-    document.getElementById('wallet-addr').textContent=walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-    document.getElementById('wallet-dot').classList.add('connected');
-    const btn=document.getElementById('wallet-btn');btn.textContent='CONNECTED';btn.classList.add('connected');
-    client=createClient({chain:studionet,account:walletAddress});
-    await client.connect('studionet');
-    const cta=document.getElementById('analyze-btn');cta.disabled=false;cta.textContent='REQUEST ANALYSIS';
-    fetchLiveBadge(selectedCoin);
-  }catch(e){showStatus('Connection failed: '+e.message,true)}
-});
-
+function getClient() {
+  if (!window.glClient && window.walletAddress) {
+    window.glClient = createClient({ chain: studionet, account: window.walletAddress });
+  }
+  return window.glClient;
+}
 // Quick coins
 document.querySelectorAll('.qc').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.qc').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');selectedCoin=b.dataset.coin;
-  document.getElementById('coin-input').value=selectedCoin;
-  if(walletAddress)fetchLiveBadge(selectedCoin);
+  b.classList.add('active');window.selectedCoin=b.dataset.coin;
+  document.getElementById('coin-input').value=window.selectedCoin;
+  if(window.walletAddress)fetchLiveBadge(window.selectedCoin);
 }));
 document.getElementById('coin-input').addEventListener('input',e=>{
-  const v=e.target.value.toUpperCase();e.target.value=v;selectedCoin=v;
+  const v=e.target.value.toUpperCase();e.target.value=v;window.selectedCoin=v;
   document.querySelectorAll('.qc').forEach(b=>b.classList.toggle('active',b.dataset.coin===v));
 });
-document.getElementById('coin-input').addEventListener('blur',()=>{if(walletAddress&&selectedCoin)fetchLiveBadge(selectedCoin)});
-document.getElementById('coin-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&walletAddress)analyze()});
+document.getElementById('coin-input').addEventListener('blur',()=>{if(window.walletAddress&&window.selectedCoin)fetchLiveBadge(window.selectedCoin)});
+document.getElementById('coin-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&window.walletAddress)analyze()});
 document.querySelectorAll('.tf-btn').forEach(b=>b.addEventListener('click',()=>{
   document.querySelectorAll('.tf-btn').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');selectedTf=b.dataset.tf;
 }));
 document.getElementById('analyze-btn').addEventListener('click',analyze);
 
-async function fetchLiveBadge(coin){
+window.fetchLiveBadge = async function fetchLiveBadge(coin){
   const sym=SYMBOLS[coin]||coin+'USDT';
   try{
     const r=await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${sym}`);
@@ -811,7 +833,7 @@ async function fetchRealTA(coin,tf){
 }
 
 async function analyze(){
-  if(!walletAddress||!selectedCoin.trim())return;
+  if(!window.walletAddress||!window.selectedCoin.trim())return;
   const btn=document.getElementById('analyze-btn');
   btn.disabled=true;btn.textContent='PROCESSING...';
   document.getElementById('result').style.display='none';
@@ -820,25 +842,25 @@ async function analyze(){
   setTimeout(()=>document.getElementById('loading').scrollIntoView({behavior:'smooth',block:'center'}),100);
   try{
     setPhase('Fetching Binance OHLCV data...');
-    const ta=await fetchRealTA(selectedCoin,selectedTf);
+    const ta=await fetchRealTA(window.selectedCoin,selectedTf);
     setPhase(`Price $${fmt(ta.current_price)} · RSI ${ta.rsi} · Submitting to GenLayer...`);
-    const txHash=await client.writeContract({
+    const txHash=await getClient().writeContract({
       address:CONTRACT,
       functionName:'request_analysis',
-      args:[selectedCoin,selectedTf,JSON.stringify(ta)],
+      args:[window.selectedCoin,selectedTf,JSON.stringify(ta)],
     });
     setPhase('Transaction submitted — AI Jury interpreting real indicators...');
-    await client.waitForTransactionReceipt({
+    await getClient().waitForTransactionReceipt({
       hash:txHash,
       status:TransactionStatus.FINALIZED,
       retries:60,
       interval:5000,
     });
     setPhase('Consensus reached — reading analysis...');
-    const raw=await client.readContract({
+    const raw=await getClient().readContract({
       address:CONTRACT,
       functionName:'get_result',
-      args:[walletAddress],
+      args:[window.walletAddress],
     });
     const data=typeof raw==='string'?JSON.parse(raw):raw;
     if(data?.error)throw new Error(data.error);
@@ -885,7 +907,7 @@ function renderResult(d,ta){
 
   // Hero
   document.getElementById('r-tf').textContent=selectedTf.toUpperCase()+' ANALYSIS';
-  document.getElementById('r-coin').textContent=selectedCoin;
+  document.getElementById('r-coin').textContent=window.selectedCoin;
   document.getElementById('r-price').textContent='$'+fmt(ta.current_price);
   const ch=parseFloat(ta.change_24h||0);
   const chEl=document.getElementById('r-change');
@@ -971,6 +993,7 @@ function renderResult(d,ta){
   document.getElementById('result').style.display='block';
   setTimeout(()=>document.getElementById('result').scrollIntoView({behavior:'smooth',block:'start'}),100);
 }
+
 </script>
 </body>
 </html>
