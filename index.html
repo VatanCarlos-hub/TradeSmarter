@@ -836,35 +836,37 @@ async function fetchRealTA(coin, tf) {
   const volRatio = (volRatioRaw * 100).toFixed(0);
   const sr = findSwingHighsLows(highs, lows, 5);
   const supports = sr.supports, resistances = sr.resistances;
-  const minD = {'1h':0.006,'2h':0.009,'4h':0.014,'8h':0.018,'12h':0.022,'1d':0.032,'1w':0.055,'1m':0.09};
-  const md = minD[tf] || 0.02;
-  const s1 = supports.find(function(s){return s < price*(1-md)})    || price*(1-md*1.5);
-  const s2 = supports.find(function(s){return s < s1*(1-md*0.4)})   || s1*(1-md*1.2);
+  // Minimum distance per timeframe — strict, no micro-levels
+  const minD = {'1h':0.008,'2h':0.012,'4h':0.018,'8h':0.024,'12h':0.030,'1d':0.045,'1w':0.07,'1m':0.10};
+  const md = minD[tf] || 0.025;
 
-  // For resistance: prefer EMA50/EMA200 as first barrier in downtrends if no nearby swing high
-  // EMA50 and EMA200 above price are real resistance levels traders watch
-  var r1Swing = resistances.find(function(r){return r > price*(1+md)});
-  var r1;
-  if (r1Swing && r1Swing <= Math.min(ema50, ema200) * 1.02) {
-    // Swing high is near or below EMAs — use it
-    r1 = r1Swing;
-  } else if (ema50 > price * (1 + md * 0.3) && ema50 < price * (1 + md * 4)) {
-    // EMA50 is above price and closer — use as first resistance
-    r1 = ema50;
-  } else if (ema200 > price * (1 + md * 0.3) && ema200 < price * (1 + md * 4)) {
-    r1 = ema200;
-  } else {
-    r1 = r1Swing || price * (1 + md * 1.5);
+  // Support: must be meaningfully below current price
+  const s1 = supports.find(function(s){ return s <= price*(1-md); }) || price*(1-md*1.4);
+  const s2 = supports.find(function(s){ return s <= price*(1-md*1.8); }) || s1*(1-md*0.9);
+
+  // Resistance: EMA50/EMA200 are priority levels if above price
+  // Only use swing high if it's meaningfully above price AND above any EMA
+  var emaR1 = null, emaR2 = null;
+  if (ema50 > price*(1+md*0.5)) emaR1 = ema50;
+  if (ema200 > price*(1+md*0.5)) {
+    if (emaR1 && ema200 > emaR1*(1+md*0.3)) emaR2 = ema200;
+    else if (!emaR1) emaR1 = ema200;
   }
 
-  var r2Swing = resistances.find(function(r){return r > r1 * (1 + md * 0.2)});
-  var r2;
-  if (ema200 > r1 * (1 + md * 0.2) && ema200 < r1 * (1 + md * 6)) {
-    // EMA200 above r1 — use as second resistance
-    r2 = (r2Swing && r2Swing < ema200) ? r2Swing : ema200;
+  var r1Swing = resistances.find(function(r){ return r >= price*(1+md); });
+  var r2Swing = r1Swing ? resistances.find(function(r){ return r >= r1Swing*(1+md*0.5); }) : null;
+
+  // Pick best R1: prefer closer of swing vs EMA, but must be >= md away
+  var r1, r2;
+  if (emaR1 && r1Swing) {
+    r1 = Math.min(emaR1, r1Swing); // take the closer one
   } else {
-    r2 = r2Swing || r1 * (1 + md * 1.2);
+    r1 = emaR1 || r1Swing || price*(1+md*1.4);
   }
+
+  // R2: next meaningful level above R1
+  var r2Candidates = [emaR2, r2Swing].filter(function(x){ return x && x >= r1*(1+md*0.4); });
+  r2 = r2Candidates.length > 0 ? Math.min.apply(null, r2Candidates) : r1*(1+md*1.2);
   const dt1 = s2;
   const dt2 = supports.find(function(s){return s < s2*(1-md*0.3)})  || s2*(1-md*1.0);
   const bt1 = r1, bt2 = r2;
