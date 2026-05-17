@@ -902,11 +902,16 @@ async function fetchRealTA(coin, tf) {
   }
 
   // R2: must be at least md away from R1 — no duplicate levels
-  var r2Candidates = [emaR2, r2Swing].filter(function(x){ return x && x >= r1*(1+md); });
-  r2 = r2Candidates.length > 0 ? Math.min.apply(null, r2Candidates) : r1*(1+md*1.5);
+  // Cap maximum distance: R2 max 50% above current price (avoids ATH as resistance)
+  const maxR2 = price * (tf === '1w' ? 1.55 : tf === '1m' ? 1.80 : 1.35);
+  var r2Candidates = [emaR2, r2Swing].filter(function(x){ return x && x >= r1*(1+md) && x <= maxR2; });
+  r2 = r2Candidates.length > 0 ? Math.min.apply(null, r2Candidates) : Math.min(r1*(1+md*1.5), maxR2);
 
   // S2: must be at least md away from S1
+  // Cap minimum distance: S2 max 40% below current price
+  const minS2 = price * (tf === '1w' ? 0.55 : tf === '1m' ? 0.45 : 0.65);
   if (s2 >= s1*(1-md*0.3)) s2 = s1*(1-md*1.0);
+  if (s2 < minS2) s2 = Math.max(s2, minS2);
   const dt1 = s2;
   const dt2 = supports.find(function(s){return s < s2*(1-md*0.3)})  || s2*(1-md*1.0);
   const bt1 = r1, bt2 = r2;
