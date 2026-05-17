@@ -669,7 +669,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x466f...790e</p>
+      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x1893...a119</p>
     </div>
   </div>
 
@@ -679,7 +679,7 @@
 // ══════════════════════════════════════════════
 //  ALPHA SIGNAL — Single Script, No Module Deps
 // ══════════════════════════════════════════════
-const CONTRACT = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
+const CONTRACT = '0x1893D07A28440adBAA9067fC5334d8B1668Ea119';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
 const STUDIO_RPC = 'https://studio.genlayer.com/api';
@@ -967,7 +967,7 @@ async function analyze() {
     const raw = await client.readContract({
       address:      CONTRACT,
       functionName: 'get_result',
-      args:         [walletAddress],
+      args:         [walletAddress, selectedCoin, selectedTf],
     });
 
     const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
