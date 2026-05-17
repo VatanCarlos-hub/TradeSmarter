@@ -914,74 +914,61 @@ async function analyze() {
     const ta = await fetchRealTA(selectedCoin, selectedTf);
     setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · Connecting to GenLayer...');
 
-    // GenLayer Studio — direct HTTP RPC, no MetaMask chain required
-    // This avoids the "chainId mismatch" error since we talk directly to Studio
-    setPhase('Submitting to GenLayer Studio...');
+    // GenLayer Studio — use SDK with studionet
+    // MetaMask is used ONLY to get wallet address, NOT for signing
+    // genlayer-js handles signing via Studio's internal system
+    setPhase('Connecting to GenLayer Studio...');
 
-    const STUDIO = 'https://studio.genlayer.com/api';
+    const glMod     = await import('https://esm.sh/genlayer-js@latest');
+    const chainsMod = await import('https://esm.sh/genlayer-js@latest/chains');
+    const typesMod  = await import('https://esm.sh/genlayer-js@latest/types');
 
-    // Write: submit transaction
-    const writeRes = await fetch(STUDIO, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 1,
-        method: 'gen_sendTransaction',
+    // Switch MetaMask to GenLayer network to avoid chainId mismatch
+    try {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
         params: [{
-          from:     walletAddress,
-          to:       CONTRACT,
-          function: 'request_analysis',
-          args:     [selectedCoin, selectedTf, JSON.stringify(ta)],
-          value:    '0',
+          chainId: '0x' + (chainsMod.studionet.id).toString(16),
+          chainName: 'GenLayer Studio',
+          rpcUrls: ['https://studio.genlayer.com/api'],
+          nativeCurrency: { name: 'GEN', symbol: 'GEN', decimals: 18 },
         }]
-      })
+      });
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0x' + (chainsMod.studionet.id).toString(16) }]
+      });
+    } catch(switchErr) {
+      console.warn('Could not switch chain:', switchErr.message);
+      // Continue anyway — studionet may not need MetaMask signing
+    }
+
+    const client = glMod.createClient({
+      chain:   chainsMod.studionet,
+      account: walletAddress,
     });
-    const writeJson = await writeRes.json();
-    if (writeJson.error) throw new Error('Submit failed: ' + JSON.stringify(writeJson.error));
-    const txHash = writeJson.result;
+
+    setPhase('Submitting to GenLayer — fetching live data...');
+    const txHash = await client.writeContract({
+      address:      CONTRACT,
+      functionName: 'request_analysis',
+      args:         [selectedCoin, selectedTf, JSON.stringify(ta)],
+    });
 
     setPhase('AI Jury deliberating — waiting for consensus...');
-
-    // Poll until finalized
-    let finalized = false;
-    for (let i = 0; i < 72; i++) {
-      await new Promise(function(r){ setTimeout(r, 5000); });
-      const pollRes = await fetch(STUDIO, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0', id: 2,
-          method: 'eth_getTransactionReceipt',
-          params: [txHash]
-        })
-      });
-      const pollJson = await pollRes.json();
-      if (pollJson.result && (pollJson.result.status === '0x1' || pollJson.result.status === 'finalized' || pollJson.result.consensusData)) {
-        finalized = true;
-        break;
-      }
-    }
-    if (!finalized) throw new Error('Transaction timed out — try again');
+    await client.waitForTransactionReceipt({
+      hash:     txHash,
+      status:   typesMod.TransactionStatus.FINALIZED,
+      retries:  72,
+      interval: 5000,
+    });
 
     setPhase('Consensus reached — reading analysis...');
-
-    // Read result
-    const readRes = await fetch(STUDIO, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0', id: 3,
-        method: 'gen_call',
-        params: [{
-          to:       CONTRACT,
-          function: 'get_result',
-          args:     [walletAddress],
-        }]
-      })
+    const raw = await client.readContract({
+      address:      CONTRACT,
+      functionName: 'get_result',
+      args:         [walletAddress],
     });
-    const readJson = await readRes.json();
-    if (readJson.error) throw new Error('Read failed: ' + JSON.stringify(readJson.error));
-    const raw = readJson.result;
 
     const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (data && data.error) throw new Error(data.error);
