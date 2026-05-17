@@ -400,7 +400,7 @@
   <div class="header">
     <div class="header-badge">
       <div class="header-badge-dot"></div>
-      <span class="header-badge-text">GENLAYER · AI JURY CONSENSUS</span>
+      <span class="header-badge-text" id="badge-text">GENLAYER · AI JURY CONSENSUS</span>
     </div>
     <h1 class="title">Alpha <span>Signal</span></h1>
     <div class="header-rule">
@@ -408,14 +408,25 @@
       <div class="header-rule-diamond"></div>
       <div class="header-rule-line"></div>
     </div>
-    <p class="subtitle">Real Technical Analysis · Binance OHLCV · AI Interpretation</p>
+    <p class="subtitle" id="subtitle-text">Real Technical Analysis · Binance OHLCV · AI Interpretation</p>
+    <!-- Language Selector -->
+    <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+      <button class="lang-btn active" data-lang="en">🇬🇧 EN</button>
+      <button class="lang-btn" data-lang="de">🇩🇪 DE</button>
+      <button class="lang-btn" data-lang="tr">🇹🇷 TR</button>
+      <button class="lang-btn" data-lang="ar">🇸🇦 AR</button>
+      <button class="lang-btn" data-lang="es">🇪🇸 ES</button>
+      <button class="lang-btn" data-lang="fr">🇫🇷 FR</button>
+      <button class="lang-btn" data-lang="ru">🇷🇺 RU</button>
+      <button class="lang-btn" data-lang="zh">🇨🇳 ZH</button>
+    </div>
   </div>
 
   <!-- Wallet -->
   <div class="wallet-card" style="animation:fadeUp .8s .02s ease both">
     <div class="wallet-info">
-      <span class="wallet-label">WALLET</span>
-      <div class="wallet-status">
+      <span class="wallet-label" id="wallet-label-text">WALLET</span>
+      <div class="wallet-status" id="wallet-label-text-wrap">
         <div class="wallet-status-dot" id="wallet-dot"></div>
         <span class="wallet-status-text" id="wallet-addr">Not connected</span>
       </div>
@@ -449,7 +460,7 @@
       <span class="live-change" id="live-change-val"></span>
     </div>
 
-    <div class="card-title" style="margin-top:32px">TIMEFRAME</div>
+    <div class="card-title" id="tf-label" style="margin-top:32px">TIMEFRAME</div>
     <div class="timeframes">
       <button class="tf-btn" data-tf="1h">1H</button>
       <button class="tf-btn" data-tf="2h">2H</button>
@@ -471,8 +482,8 @@
       <div class="spinner-outer"></div>
       <div class="spinner-inner"></div>
     </div>
-    <div class="loading-title">AI Jury Deliberating</div>
-    <div class="loading-sub">GENLAYER CONSENSUS IN PROGRESS</div>
+    <div class="loading-title" id="loading-title-text">AI Jury Deliberating</div>
+    <div class="loading-sub" id="loading-sub-text">GENLAYER CONSENSUS IN PROGRESS</div>
     <div class="timer" id="timer">00:00</div>
     <div class="loading-phase" id="loading-phase">Fetching market data from Binance...</div>
   </div>
@@ -513,64 +524,85 @@
       <div class="verdict-label">VERDICT</div>
       <div class="verdict-text" id="r-verdict">—</div>
       <div class="verdict-meta">
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text4)">CONFIDENCE</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text4)" id="confidence-label-text">CONFIDENCE</span>
         <span class="confidence-badge" id="r-confidence-badge">—</span>
       </div>
     </div>
 
     <!-- Probabilities -->
+    <!-- TRADE SUGGESTION -->
+    <div class="card card-anim" id="trade-card">
+      <div class="card-title" id="trade-title">TRADE SUGGESTION</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+        <div id="trade-long-card" style="padding:20px;border-radius:3px;border:2px solid rgba(45,106,63,0.4);background:rgba(45,106,63,0.06)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--green);margin-bottom:10px" id="trade-long-label">LONG</div>
+          <div style="font-family:var(--display);font-size:36px;font-weight:700;color:var(--dark);line-height:1" id="trade-long-pct">—%</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;font-style:italic" id="trade-long-note">—</div>
+        </div>
+        <div id="trade-short-card" style="padding:20px;border-radius:3px;border:2px solid rgba(139,41,41,0.3);background:rgba(139,41,41,0.05)">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--red);margin-bottom:10px" id="trade-short-label">SHORT</div>
+          <div style="font-family:var(--display);font-size:36px;font-weight:700;color:var(--dark);line-height:1" id="trade-short-pct">—%</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px;font-style:italic" id="trade-short-note">—</div>
+        </div>
+      </div>
+      <div style="margin-top:14px;padding:12px 16px;background:rgba(139,41,41,0.06);border-left:3px solid var(--red);border-radius:0 3px 3px 0">
+        <div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--red);margin-bottom:4px" id="trade-disclaimer-label">⚠ NOT FINANCIAL ADVICE</div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.5" id="trade-disclaimer-text">This is a probabilistic signal based on technical indicators only. Never trade without your own research. Past signals do not guarantee future results.</div>
+      </div>
+    </div>
+
     <div class="card card-anim">
-      <div class="card-title">PROBABILITY DISTRIBUTION</div>
+      <div class="card-title" id="prob-label-text">PROBABILITY DISTRIBUTION</div>
       <div class="prob-bars">
         <div class="prob-bar-item">
           <div class="prob-bar-track">
             <div class="prob-bar-fill bull" id="pb-bull" style="height:0%"></div>
           </div>
           <div class="prob-pct"><span id="p-bull">0</span><span>%</span></div>
-          <div class="prob-name">BULL</div>
+          <div class="prob-name" id="prob-bull-label">BULL</div>
         </div>
         <div class="prob-bar-item">
           <div class="prob-bar-track">
             <div class="prob-bar-fill neutral" id="pb-neutral" style="height:0%"></div>
           </div>
           <div class="prob-pct"><span id="p-neutral">0</span><span>%</span></div>
-          <div class="prob-name">NEUTRAL</div>
+          <div class="prob-name" id="prob-neutral-label">NEUTRAL</div>
         </div>
         <div class="prob-bar-item">
           <div class="prob-bar-track">
             <div class="prob-bar-fill bear" id="pb-bear" style="height:0%"></div>
           </div>
           <div class="prob-pct"><span id="p-bear">0</span><span>%</span></div>
-          <div class="prob-name">BEAR</div>
+          <div class="prob-name" id="prob-bear-label">BEAR</div>
         </div>
       </div>
     </div>
 
     <!-- Key Levels -->
     <div class="card card-anim">
-      <div class="card-title">KEY PRICE LEVELS</div>
+      <div class="card-title" id="levels-label-text">KEY PRICE LEVELS</div>
       <div class="levels-grid">
         <div class="level-item current">
-          <div class="level-label">CURRENT PRICE</div>
+          <div class="level-label" id="current-label-text">CURRENT PRICE</div>
           <div class="level-price" id="r-current">—</div>
         </div>
         <div class="level-item support">
-          <div class="level-label">▲ SUPPORT I</div>
+          <div class="level-label" id="sup1-label">▲ SUPPORT I</div>
           <div class="level-price" id="r-s1">—</div>
           <div class="level-dist" id="r-s1-dist"></div>
         </div>
         <div class="level-item support">
-          <div class="level-label">▲ SUPPORT II</div>
+          <div class="level-label" id="sup2-label">▲ SUPPORT II</div>
           <div class="level-price" id="r-s2">—</div>
           <div class="level-dist" id="r-s2-dist"></div>
         </div>
         <div class="level-item resistance">
-          <div class="level-label">▼ RESISTANCE I</div>
+          <div class="level-label" id="res1-label">▼ RESISTANCE I</div>
           <div class="level-price" id="r-r1">—</div>
           <div class="level-dist" id="r-r1-dist"></div>
         </div>
         <div class="level-item resistance">
-          <div class="level-label">▼ RESISTANCE II</div>
+          <div class="level-label" id="res2-label">▼ RESISTANCE II</div>
           <div class="level-price" id="r-r2">—</div>
           <div class="level-dist" id="r-r2-dist"></div>
         </div>
@@ -579,7 +611,7 @@
 
     <!-- Scenarios -->
     <div class="card card-anim">
-      <div class="card-title">SCENARIOS</div>
+      <div class="card-title" id="scenarios-label-text">SCENARIOS</div>
       <div class="scenarios-grid">
         <div class="scenario bull">
           <div class="scenario-header">
@@ -616,7 +648,7 @@
 
     <!-- Indicators -->
     <div class="card card-anim">
-      <div class="card-title">TECHNICAL INDICATORS</div>
+      <div class="card-title" id="ind-label-text">TECHNICAL INDICATORS</div>
       <div class="indicators-grid">
         <div class="indicator-row">
           <div class="indicator-key">RSI (14)</div>
@@ -669,7 +701,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x1893...a119</p>
+      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x1893...a119</p>
     </div>
   </div>
 
@@ -1113,10 +1145,408 @@ function renderResult(d, ta) {
   document.getElementById('r-vol-int').textContent = d.volume_interpretation || '';
 
   document.getElementById('result').style.display = 'block';
+  // Render trade suggestion
+  if (window._tradeHook) window._tradeHook(d);
   setTimeout(function() {
     document.getElementById('result').scrollIntoView({behavior:'smooth', block:'start'});
   }, 100);
 }
+</script>
+
+<!-- Disclaimer Modal -->
+<div id="disclaimer-modal" style="display:none;position:fixed;inset:0;background:rgba(26,22,16,0.85);z-index:9999;align-items:center;justify-content:center;padding:24px">
+  <div style="background:var(--cream);border-radius:4px;max-width:560px;width:100%;padding:40px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+    <button onclick="document.getElementById('disclaimer-modal').style.display='none'" style="position:absolute;top:16px;right:20px;font-size:20px;background:none;border:none;cursor:pointer;color:var(--text4)">✕</button>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;color:var(--red);margin-bottom:16px">⚠ DISCLAIMER</div>
+    <h2 style="font-family:var(--display);font-size:22px;font-weight:700;color:var(--dark);margin-bottom:16px" id="disc-title">Not Financial Advice</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:12px" id="disc-p1">Alpha Signal is a technical analysis tool powered by AI and real market data from Binance. It is designed for informational and educational purposes only.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:12px" id="disc-p2">Nothing on this platform constitutes financial, investment, or trading advice. All signals, probabilities, and trade suggestions are based solely on technical indicators and do not account for fundamental analysis, news events, or personal financial circumstances.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:20px" id="disc-p3">Cryptocurrency trading involves substantial risk of loss. Never invest more than you can afford to lose. Always conduct your own research before making any trading decisions.</p>
+    <button onclick="document.getElementById('disclaimer-modal').style.display='none'" style="width:100%;padding:14px;background:var(--dark);color:var(--cream);border:none;font-family:var(--mono);font-size:11px;letter-spacing:4px;cursor:pointer;border-radius:2px" id="disc-btn">I UNDERSTAND</button>
+  </div>
+</div>
+
+<style>
+.lang-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 5px 12px;
+  background: var(--cream2);
+  border: 1.5px solid var(--cream3);
+  color: var(--text3);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.18s;
+}
+.lang-btn:hover, .lang-btn.active {
+  border-color: var(--gold2);
+  color: var(--gold);
+  background: var(--gold-bg);
+}
+</style>
+
+<script>
+// ── TRANSLATIONS ──────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    badge: 'GENLAYER · AI JURY CONSENSUS',
+    subtitle: 'Real Technical Analysis · Binance OHLCV · AI Interpretation',
+    asset_label: 'SELECT ASSET', tf_label: 'TIMEFRAME',
+    connect_btn: 'CONNECT WALLET', connected_btn: 'CONNECTED',
+    analyze_btn: 'REQUEST ANALYSIS', processing_btn: 'PROCESSING...',
+    wallet_label: 'WALLET', not_connected: 'Not connected',
+    loading_title: 'AI Jury Deliberating', loading_sub: 'GENLAYER CONSENSUS IN PROGRESS',
+    verdict_label: 'VERDICT', confidence_label: 'CONFIDENCE',
+    prob_label: 'PROBABILITY DISTRIBUTION',
+    bull_label: 'BULL', neutral_label: 'NEUTRAL', bear_label: 'BEAR',
+    levels_label: 'KEY PRICE LEVELS', current_label: 'CURRENT PRICE',
+    sup1_label: '▲ SUPPORT I', sup2_label: '▲ SUPPORT II',
+    res1_label: '▼ RESISTANCE I', res2_label: '▼ RESISTANCE II',
+    scenarios_label: 'SCENARIOS', bull_s: 'BULL SCENARIO', bear_s: 'BEAR SCENARIO',
+    target1: 'TARGET I', target2: 'TARGET II',
+    ind_label: 'TECHNICAL INDICATORS',
+    trade_title: 'TRADE SUGGESTION', long_label: 'LONG', short_label: 'SHORT',
+    trade_disclaimer: '⚠ NOT FINANCIAL ADVICE',
+    trade_disclaimer_text: 'Probabilistic signal based on technical indicators only. Never trade without your own research.',
+    footer: 'NOT FINANCIAL ADVICE · GENLAYER AI JURY · BINANCE OHLCV DATA',
+    disc_title: 'Not Financial Advice',
+    disc_p1: 'Alpha Signal is a technical analysis tool for informational purposes only.',
+    disc_p2: 'Nothing here constitutes financial or trading advice. All signals are based solely on technical indicators.',
+    disc_p3: 'Crypto trading involves substantial risk. Never invest more than you can afford to lose.',
+    disc_btn: 'I UNDERSTAND',
+  },
+  de: {
+    badge: 'GENLAYER · KI-JURY KONSENS',
+    subtitle: 'Echte Technische Analyse · Binance OHLCV · KI-Interpretation',
+    asset_label: 'ASSET WÄHLEN', tf_label: 'ZEITRAHMEN',
+    connect_btn: 'WALLET VERBINDEN', connected_btn: 'VERBUNDEN',
+    analyze_btn: 'ANALYSE ANFORDERN', processing_btn: 'WIRD VERARBEITET...',
+    wallet_label: 'WALLET', not_connected: 'Nicht verbunden',
+    loading_title: 'KI-Jury berät', loading_sub: 'GENLAYER KONSENS LÄUFT',
+    verdict_label: 'URTEIL', confidence_label: 'KONFIDENZ',
+    prob_label: 'WAHRSCHEINLICHKEITSVERTEILUNG',
+    bull_label: 'BULL', neutral_label: 'NEUTRAL', bear_label: 'BEAR',
+    levels_label: 'WICHTIGE PREISLEVEL', current_label: 'AKTUELLER PREIS',
+    sup1_label: '▲ SUPPORT I', sup2_label: '▲ SUPPORT II',
+    res1_label: '▼ WIDERSTAND I', res2_label: '▼ WIDERSTAND II',
+    scenarios_label: 'SZENARIEN', bull_s: 'BULL-SZENARIO', bear_s: 'BEAR-SZENARIO',
+    target1: 'ZIEL I', target2: 'ZIEL II',
+    ind_label: 'TECHNISCHE INDIKATOREN',
+    trade_title: 'HANDELSEMPFEHLUNG', long_label: 'LONG', short_label: 'SHORT',
+    trade_disclaimer: '⚠ KEIN ANLAGERATSCHLAG',
+    trade_disclaimer_text: 'Probabilistisches Signal nur auf Basis technischer Indikatoren. Immer eigene Recherche durchführen.',
+    footer: 'KEIN ANLAGERATSCHLAG · GENLAYER KI-JURY · BINANCE OHLCV DATEN',
+    disc_title: 'Kein Anlageratschlag',
+    disc_p1: 'Alpha Signal ist ein technisches Analyse-Tool nur zu Informationszwecken.',
+    disc_p2: 'Nichts hier ist ein Finanz- oder Handelsratschlag. Alle Signale basieren ausschließlich auf technischen Indikatoren.',
+    disc_p3: 'Krypto-Handel birgt erhebliche Verlustrisiken. Investiere nie mehr als du verlieren kannst.',
+    disc_btn: 'VERSTANDEN',
+  },
+  tr: {
+    badge: 'GENLAYER · YAPAY ZEKA JÜRİ KONSENSÜSÜ',
+    subtitle: 'Gerçek Teknik Analiz · Binance OHLCV · YZ Yorumu',
+    asset_label: 'VARLIK SEÇ', tf_label: 'ZAMAN DİLİMİ',
+    connect_btn: 'CÜZDAN BAĞLA', connected_btn: 'BAĞLANDI',
+    analyze_btn: 'ANALİZ İSTE', processing_btn: 'İŞLENİYOR...',
+    wallet_label: 'CÜZDAN', not_connected: 'Bağlı değil',
+    loading_title: 'YZ Jürisi Karar Veriyor', loading_sub: 'GENLAYER KONSENSÜS DEVAM EDİYOR',
+    verdict_label: 'KARAR', confidence_label: 'GÜVEN',
+    prob_label: 'OLASILIK DAĞILIMI',
+    bull_label: 'BOĞA', neutral_label: 'NÖTR', bear_label: 'AYI',
+    levels_label: 'KRİTİK FİYAT SEVİYELERİ', current_label: 'MEVCUT FİYAT',
+    sup1_label: '▲ DESTEK I', sup2_label: '▲ DESTEK II',
+    res1_label: '▼ DİRENÇ I', res2_label: '▼ DİRENÇ II',
+    scenarios_label: 'SENARYOLAR', bull_s: 'BOĞA SENARYOSU', bear_s: 'AYI SENARYOSU',
+    target1: 'HEDEF I', target2: 'HEDEF II',
+    ind_label: 'TEKNİK GÖSTERGELER',
+    trade_title: 'İŞLEM ÖNERİSİ', long_label: 'LONG', short_label: 'SHORT',
+    trade_disclaimer: '⚠ YATIRIM TAVSİYESİ DEĞİLDİR',
+    trade_disclaimer_text: 'Yalnızca teknik göstergelere dayalı olasılıksal sinyal. Kendi araştırmanı yapmadan işlem yapma.',
+    footer: 'YATIRIM TAVSİYESİ DEĞİL · GENLAYER YZ JÜRİ · BİNANCE OHLCV VERİSİ',
+    disc_title: 'Yatırım Tavsiyesi Değildir',
+    disc_p1: 'Alpha Signal yalnızca bilgilendirme amaçlı bir teknik analiz aracıdır.',
+    disc_p2: 'Buradaki hiçbir şey finansal veya ticaret tavsiyesi değildir.',
+    disc_p3: 'Kripto ticareti önemli kayıp riski taşır. Kaybetmeyi göze alamayacağınızdan fazlasını yatırmayın.',
+    disc_btn: 'ANLADIM',
+  },
+  ar: {
+    badge: 'GENLAYER · إجماع هيئة المحلفين الذكاء الاصطناعي',
+    subtitle: 'تحليل فني حقيقي · بيانات Binance · تفسير الذكاء الاصطناعي',
+    asset_label: 'اختر الأصل', tf_label: 'الإطار الزمني',
+    connect_btn: 'ربط المحفظة', connected_btn: 'متصل',
+    analyze_btn: 'طلب تحليل', processing_btn: 'جاري المعالجة...',
+    wallet_label: 'المحفظة', not_connected: 'غير متصل',
+    loading_title: 'هيئة المحلفين تداول', loading_sub: 'إجماع GENLAYER جارٍ',
+    verdict_label: 'الحكم', confidence_label: 'الثقة',
+    prob_label: 'توزيع الاحتمالات',
+    bull_label: 'صعودي', neutral_label: 'محايد', bear_label: 'هبوطي',
+    levels_label: 'مستويات السعر الرئيسية', current_label: 'السعر الحالي',
+    sup1_label: '▲ دعم I', sup2_label: '▲ دعم II',
+    res1_label: '▼ مقاومة I', res2_label: '▼ مقاومة II',
+    scenarios_label: 'السيناريوهات', bull_s: 'سيناريو صعودي', bear_s: 'سيناريو هبوطي',
+    target1: 'هدف I', target2: 'هدف II',
+    ind_label: 'المؤشرات الفنية',
+    trade_title: 'اقتراح صفقة', long_label: 'شراء', short_label: 'بيع',
+    trade_disclaimer: '⚠ ليس نصيحة مالية',
+    trade_disclaimer_text: 'إشارة احتمالية مبنية على المؤشرات الفنية فقط. لا تتداول دون بحثك الخاص.',
+    footer: 'ليس نصيحة مالية · هيئة محلفين GENLAYER · بيانات Binance',
+    disc_title: 'ليس نصيحة مالية',
+    disc_p1: 'Alpha Signal أداة تحليل فني للأغراض المعلوماتية فقط.',
+    disc_p2: 'لا شيء هنا يمثل نصيحة مالية أو تجارية.',
+    disc_p3: 'تداول العملات المشفرة ينطوي على مخاطر خسارة كبيرة.',
+    disc_btn: 'فهمت',
+  },
+  es: {
+    badge: 'GENLAYER · CONSENSO JURADO IA',
+    subtitle: 'Análisis Técnico Real · Binance OHLCV · Interpretación IA',
+    asset_label: 'SELECCIONAR ACTIVO', tf_label: 'MARCO TEMPORAL',
+    connect_btn: 'CONECTAR CARTERA', connected_btn: 'CONECTADO',
+    analyze_btn: 'SOLICITAR ANÁLISIS', processing_btn: 'PROCESANDO...',
+    wallet_label: 'CARTERA', not_connected: 'No conectado',
+    loading_title: 'Jurado IA deliberando', loading_sub: 'CONSENSO GENLAYER EN PROGRESO',
+    verdict_label: 'VEREDICTO', confidence_label: 'CONFIANZA',
+    prob_label: 'DISTRIBUCIÓN DE PROBABILIDAD',
+    bull_label: 'ALCISTA', neutral_label: 'NEUTRAL', bear_label: 'BAJISTA',
+    levels_label: 'NIVELES CLAVE DE PRECIO', current_label: 'PRECIO ACTUAL',
+    sup1_label: '▲ SOPORTE I', sup2_label: '▲ SOPORTE II',
+    res1_label: '▼ RESISTENCIA I', res2_label: '▼ RESISTENCIA II',
+    scenarios_label: 'ESCENARIOS', bull_s: 'ESCENARIO ALCISTA', bear_s: 'ESCENARIO BAJISTA',
+    target1: 'OBJETIVO I', target2: 'OBJETIVO II',
+    ind_label: 'INDICADORES TÉCNICOS',
+    trade_title: 'SUGERENCIA DE TRADE', long_label: 'LARGO', short_label: 'CORTO',
+    trade_disclaimer: '⚠ NO ES CONSEJO FINANCIERO',
+    trade_disclaimer_text: 'Señal probabilística basada solo en indicadores técnicos. Nunca operes sin tu propia investigación.',
+    footer: 'NO ES CONSEJO FINANCIERO · JURADO IA GENLAYER · DATOS BINANCE OHLCV',
+    disc_title: 'No es Consejo Financiero',
+    disc_p1: 'Alpha Signal es una herramienta de análisis técnico solo con fines informativos.',
+    disc_p2: 'Nada aquí constituye consejo financiero o de trading.',
+    disc_p3: 'El trading de criptomonedas implica riesgo sustancial. Nunca inviertas más de lo que puedas perder.',
+    disc_btn: 'ENTENDIDO',
+  },
+  fr: {
+    badge: 'GENLAYER · CONSENSUS DU JURY IA',
+    subtitle: 'Analyse Technique Réelle · Binance OHLCV · Interprétation IA',
+    asset_label: 'SÉLECTIONNER ACTIF', tf_label: 'HORIZON TEMPOREL',
+    connect_btn: 'CONNECTER PORTEFEUILLE', connected_btn: 'CONNECTÉ',
+    analyze_btn: 'DEMANDER ANALYSE', processing_btn: 'EN COURS...',
+    wallet_label: 'PORTEFEUILLE', not_connected: 'Non connecté',
+    loading_title: 'Le Jury IA délibère', loading_sub: 'CONSENSUS GENLAYER EN COURS',
+    verdict_label: 'VERDICT', confidence_label: 'CONFIANCE',
+    prob_label: 'DISTRIBUTION DE PROBABILITÉ',
+    bull_label: 'HAUSSIER', neutral_label: 'NEUTRE', bear_label: 'BAISSIER',
+    levels_label: 'NIVEAUX DE PRIX CLÉS', current_label: 'PRIX ACTUEL',
+    sup1_label: '▲ SUPPORT I', sup2_label: '▲ SUPPORT II',
+    res1_label: '▼ RÉSISTANCE I', res2_label: '▼ RÉSISTANCE II',
+    scenarios_label: 'SCÉNARIOS', bull_s: 'SCÉNARIO HAUSSIER', bear_s: 'SCÉNARIO BAISSIER',
+    target1: 'CIBLE I', target2: 'CIBLE II',
+    ind_label: 'INDICATEURS TECHNIQUES',
+    trade_title: 'SUGGESTION DE TRADE', long_label: 'LONG', short_label: 'SHORT',
+    trade_disclaimer: '⚠ PAS DE CONSEIL FINANCIER',
+    trade_disclaimer_text: 'Signal probabiliste basé uniquement sur les indicateurs techniques. Ne tradez jamais sans votre propre recherche.',
+    footer: 'PAS DE CONSEIL FINANCIER · JURY IA GENLAYER · DONNÉES BINANCE OHLCV',
+    disc_title: 'Pas de Conseil Financier',
+    disc_p1: 'Alpha Signal est un outil d'analyse technique à des fins d'information uniquement.',
+    disc_p2: 'Rien ici ne constitue un conseil financier ou de trading.',
+    disc_p3: 'Le trading de crypto-monnaies implique un risque de perte substantiel.',
+    disc_btn: 'J'AI COMPRIS',
+  },
+  ru: {
+    badge: 'GENLAYER · КОНСЕНСУС ЖЮРИ ИИ',
+    subtitle: 'Реальный Технический Анализ · Binance OHLCV · Интерпретация ИИ',
+    asset_label: 'ВЫБРАТЬ АКТИВ', tf_label: 'ТАЙМФРЕЙМ',
+    connect_btn: 'ПОДКЛЮЧИТЬ КОШЕЛЁК', connected_btn: 'ПОДКЛЮЧЁН',
+    analyze_btn: 'ЗАПРОСИТЬ АНАЛИЗ', processing_btn: 'ОБРАБОТКА...',
+    wallet_label: 'КОШЕЛЁК', not_connected: 'Не подключён',
+    loading_title: 'Жюри ИИ совещается', loading_sub: 'КОНСЕНСУС GENLAYER В ПРОЦЕССЕ',
+    verdict_label: 'ВЕРДИКТ', confidence_label: 'УВЕРЕННОСТЬ',
+    prob_label: 'РАСПРЕДЕЛЕНИЕ ВЕРОЯТНОСТЕЙ',
+    bull_label: 'БЫЧИЙ', neutral_label: 'НЕЙТРАЛЬНЫЙ', bear_label: 'МЕДВЕЖИЙ',
+    levels_label: 'КЛЮЧЕВЫЕ УРОВНИ ЦЕНЫ', current_label: 'ТЕКУЩАЯ ЦЕНА',
+    sup1_label: '▲ ПОДДЕРЖКА I', sup2_label: '▲ ПОДДЕРЖКА II',
+    res1_label: '▼ СОПРОТИВЛЕНИЕ I', res2_label: '▼ СОПРОТИВЛЕНИЕ II',
+    scenarios_label: 'СЦЕНАРИИ', bull_s: 'БЫЧИЙ СЦЕНАРИЙ', bear_s: 'МЕДВЕЖИЙ СЦЕНАРИЙ',
+    target1: 'ЦЕЛЬ I', target2: 'ЦЕЛЬ II',
+    ind_label: 'ТЕХНИЧЕСКИЕ ИНДИКАТОРЫ',
+    trade_title: 'ПРЕДЛОЖЕНИЕ СДЕЛКИ', long_label: 'ЛОНГ', short_label: 'ШОРТ',
+    trade_disclaimer: '⚠ НЕ ФИНАНСОВЫЙ СОВЕТ',
+    trade_disclaimer_text: 'Вероятностный сигнал на основе технических индикаторов. Никогда не торгуйте без собственного исследования.',
+    footer: 'НЕ ФИНАНСОВЫЙ СОВЕТ · ЖЮРИ ИИ GENLAYER · ДАННЫЕ BINANCE OHLCV',
+    disc_title: 'Не Финансовый Совет',
+    disc_p1: 'Alpha Signal — инструмент технического анализа только в информационных целях.',
+    disc_p2: 'Ничто здесь не является финансовым советом или советом по торговле.',
+    disc_p3: 'Торговля криптовалютой сопряжена со значительным риском потерь.',
+    disc_btn: 'ПОНЯТНО',
+  },
+  zh: {
+    badge: 'GENLAYER · AI陪审团共识',
+    subtitle: '真实技术分析 · Binance OHLCV · AI解读',
+    asset_label: '选择资产', tf_label: '时间框架',
+    connect_btn: '连接钱包', connected_btn: '已连接',
+    analyze_btn: '请求分析', processing_btn: '处理中...',
+    wallet_label: '钱包', not_connected: '未连接',
+    loading_title: 'AI陪审团审议中', loading_sub: 'GENLAYER共识进行中',
+    verdict_label: '裁决', confidence_label: '置信度',
+    prob_label: '概率分布',
+    bull_label: '看涨', neutral_label: '中性', bear_label: '看跌',
+    levels_label: '关键价格区间', current_label: '当前价格',
+    sup1_label: '▲ 支撑位 I', sup2_label: '▲ 支撑位 II',
+    res1_label: '▼ 阻力位 I', res2_label: '▼ 阻力位 II',
+    scenarios_label: '情景', bull_s: '看涨情景', bear_s: '看跌情景',
+    target1: '目标 I', target2: '目标 II',
+    ind_label: '技术指标',
+    trade_title: '交易建议', long_label: '做多', short_label: '做空',
+    trade_disclaimer: '⚠ 非财务建议',
+    trade_disclaimer_text: '基于技术指标的概率信号。请勿在没有自己研究的情况下交易。',
+    footer: '非财务建议 · GENLAYER AI陪审团 · Binance OHLCV数据',
+    disc_title: '非财务建议',
+    disc_p1: 'Alpha Signal是仅供参考的技术分析工具。',
+    disc_p2: '此处内容不构成财务或交易建议。',
+    disc_p3: '加密货币交易涉及重大损失风险。切勿投入超出承受范围的资金。',
+    disc_btn: '我明白了',
+  },
+};
+
+let currentLang = 'en';
+
+function applyLang(lang) {
+  const t = TRANSLATIONS[lang] || TRANSLATIONS.en;
+  currentLang = lang;
+
+  // Direction for Arabic
+  document.body.style.direction = lang === 'ar' ? 'rtl' : 'ltr';
+
+  // Apply translations to static elements
+  const el = function(id){ return document.getElementById(id); };
+  const setText = function(id, text){ if(el(id)) el(id).textContent = text; };
+
+  setText('badge-text', t.badge);
+  setText('subtitle-text', t.subtitle);
+  setText('asset-label', t.asset_label);
+  setText('tf-label', t.tf_label);
+  setText('wallet-label-text', t.wallet_label);
+
+  const walletBtn = document.getElementById('wallet-btn');
+  if (walletBtn && !walletBtn.classList.contains('connected')) walletBtn.textContent = t.connect_btn;
+  if (walletBtn && walletBtn.classList.contains('connected')) walletBtn.textContent = t.connected_btn;
+
+  const analyzeBtn = document.getElementById('analyze-btn');
+  if (analyzeBtn && analyzeBtn.textContent !== t.processing_btn) {
+    if (!window.walletAddress) analyzeBtn.textContent = t.connect_btn.replace('CONNECT ', '').replace('VERBINDEN','') + '...';
+    else analyzeBtn.textContent = t.analyze_btn;
+  }
+
+  setText('loading-title-text', t.loading_title);
+  setText('loading-sub-text', t.loading_sub);
+
+  // Result labels
+  setText('verdict-label-text', t.verdict_label);
+  setText('confidence-label-text', t.confidence_label);
+  setText('prob-label-text', t.prob_label);
+  setText('prob-bull-label', t.bull_label);
+  setText('prob-neutral-label', t.neutral_label);
+  setText('prob-bear-label', t.bear_label);
+  setText('levels-label-text', t.levels_label);
+  setText('current-label-text', t.current_label);
+  setText('sup1-label', t.sup1_label);
+  setText('sup2-label', t.sup2_label);
+  setText('res1-label', t.res1_label);
+  setText('res2-label', t.res2_label);
+  setText('scenarios-label-text', t.scenarios_label);
+  setText('ind-label-text', t.ind_label);
+  setText('trade-title', t.trade_title);
+  setText('trade-long-label', t.long_label);
+  setText('trade-short-label', t.short_label);
+  setText('trade-disclaimer-label', t.trade_disclaimer);
+  setText('trade-disclaimer-text', t.trade_disclaimer_text);
+
+  // Disclaimer modal
+  setText('disc-title', t.disc_title);
+  setText('disc-p1', t.disc_p1);
+  setText('disc-p2', t.disc_p2);
+  setText('disc-p3', t.disc_p3);
+  setText('disc-btn', t.disc_btn);
+
+  // Footer
+  setText('footer-text-main', t.footer);
+}
+
+// Language buttons
+document.querySelectorAll('.lang-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.lang-btn').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    applyLang(btn.dataset.lang);
+  });
+});
+
+// Show disclaimer on first visit
+if (!localStorage.getItem('alpha_disclaimer_seen')) {
+  setTimeout(function(){ document.getElementById('disclaimer-modal').style.display='flex'; }, 800);
+  localStorage.setItem('alpha_disclaimer_seen', '1');
+}
+
+// ── TRADE SUGGESTION RENDER ────────────────────
+function renderTrade(d) {
+  const bull = +(d.bull_probability || 0);
+  const bear = +(d.bear_probability || 0);
+  const trend = d.trend || 'neutral';
+  const conf = d.confidence || 'MEDIUM';
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+
+  // Long probability = bull + half of neutral
+  const neutral = +(d.neutral_probability || 0);
+  const longPct  = Math.round(bull + neutral * 0.3);
+  const shortPct = 100 - longPct;
+
+  document.getElementById('trade-long-pct').textContent  = longPct + '%';
+  document.getElementById('trade-short-pct').textContent = shortPct + '%';
+
+  // Long note
+  const longNotes = {
+    en: { high: 'Strong technical setup favors upside', med: 'Moderate long bias — wait for confirmation', low: 'Weak setup — scalp only with tight stop' },
+    de: { high: 'Starkes Setup begünstigt Aufwärtsbewegung', med: 'Moderater Long-Bias — auf Bestätigung warten', low: 'Schwaches Setup — nur Scalp mit engem Stop' },
+    tr: { high: 'Güçlü teknik kurulum yukarı yönü destekliyor', med: 'Orta long eğilimi — onay bekle', low: 'Zayıf kurulum — yalnızca dar stop ile scalp' },
+    ar: { high: 'الإعداد الفني القوي يفضل الصعود', med: 'ميل شراء معتدل — انتظر التأكيد', low: 'إعداد ضعيف — تداول قصير فقط مع وقف ضيق' },
+    es: { high: 'Setup técnico fuerte favorece el alza', med: 'Sesgo alcista moderado — espera confirmación', low: 'Setup débil — solo scalp con stop ajustado' },
+    fr: { high: 'Configuration technique forte favorise la hausse', med: 'Biais long modéré — attendre confirmation', low: 'Configuration faible — scalp uniquement avec stop serré' },
+    ru: { high: 'Сильная техническая конфигурация в пользу роста', med: 'Умеренный лонг-уклон — ждите подтверждения', low: 'Слабая конфигурация — только скальп с коротким стопом' },
+    zh: { high: '强技术形态支持上行', med: '中等做多倾向 — 等待确认', low: '弱形态 — 仅限带紧止损的快速交易' },
+  };
+
+  const shortNotes = {
+    en: { high: 'Strong bearish signals — downside risk elevated', med: 'Moderate short bias — manage risk carefully', low: 'Low conviction short — caution advised' },
+    de: { high: 'Starke Bärensignale — erhöhtes Abwärtsrisiko', med: 'Moderater Short-Bias — Risiko sorgfältig managen', low: 'Schwacher Short — Vorsicht empfohlen' },
+    tr: { high: 'Güçlü bear sinyalleri — aşağı risk yüksek', med: 'Orta short eğilimi — riski dikkatli yönet', low: 'Düşük güvenilirlikli short — dikkat önerilir' },
+    ar: { high: 'إشارات هبوط قوية — مخاطر الهبوط مرتفعة', med: 'ميل بيع معتدل — إدارة المخاطر بعناية', low: 'بيع ضعيف الثقة — يُنصح بالحذر' },
+    es: { high: 'Señales bajistas fuertes — riesgo de caída elevado', med: 'Sesgo bajista moderado — gestiona el riesgo', low: 'Short de baja convicción — se aconseja precaución' },
+    fr: { high: 'Forts signaux baissiers — risque de baisse élevé', med: 'Biais short modéré — gérer le risque soigneusement', low: 'Short de faible conviction — prudence conseillée' },
+    ru: { high: 'Сильные медвежьи сигналы — риск снижения повышен', med: 'Умеренный шорт-уклон — тщательно управляйте риском', low: 'Шорт с низкой уверенностью — рекомендуется осторожность' },
+    zh: { high: '强烈看跌信号 — 下行风险升高', med: '中等做空倾向 — 谨慎管理风险', low: '低置信度做空 — 建议谨慎' },
+  };
+
+  const langNotes = longNotes[currentLang] || longNotes.en;
+  const langShortNotes = shortNotes[currentLang] || shortNotes.en;
+  const noteKey = conf === 'HIGH' ? 'high' : conf === 'LOW' ? 'low' : 'med';
+
+  document.getElementById('trade-long-note').textContent  = langNotes[noteKey];
+  document.getElementById('trade-short-note').textContent = langShortNotes[noteKey];
+
+  // Highlight dominant side
+  const longCard  = document.getElementById('trade-long-card');
+  const shortCard = document.getElementById('trade-short-card');
+  if (longPct > shortPct) {
+    longCard.style.borderWidth  = '3px';
+    shortCard.style.opacity     = '0.65';
+  } else {
+    shortCard.style.borderWidth = '3px';
+    longCard.style.opacity      = '0.65';
+  }
+}
+
+// Hook into renderResult to also render trade
+const _origRenderResult = window.renderResult || function(){};
+window._tradeHook = renderTrade;
 </script>
 </body>
 </html>
