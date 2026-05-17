@@ -676,11 +676,11 @@
 </div>
 
 <script type="module">
-import { createClient } from 'https://esm.sh/genlayer-js@latest';
-import { studionet }   from 'https://esm.sh/genlayer-js@latest/chains';
-import { TransactionStatus } from 'https://esm.sh/genlayer-js@latest/types';
+import { createClient, simulator } from 'https://esm.sh/genlayer-js@0.7.0';
+import { TransactionStatus } from 'https://esm.sh/genlayer-js@0.7.0/types';
 
-const CONTRACT  = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
+const CONTRACT   = '0x466fd1dF1Bc20e05d88d0d4E43A052E1778F790e';
+const STUDIO_RPC = 'https://studio.genlayer.com/api';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
 
@@ -689,18 +689,22 @@ let timerInterval=null,elapsed=0;
 
 // Wallet
 document.getElementById('wallet-btn').addEventListener('click',async()=>{
-  if(!window.ethereum){showStatus('MetaMask not detected.',true);return}
+  if(!window.ethereum){showStatus('MetaMask not detected. Please install MetaMask.',true);return}
   try{
     const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
     walletAddress=accounts[0];
+    client=createClient({
+      transport: simulator(STUDIO_RPC),
+      account: walletAddress,
+    });
     document.getElementById('wallet-addr').textContent=walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
     document.getElementById('wallet-dot').classList.add('connected');
-    const btn=document.getElementById('wallet-btn');btn.textContent='CONNECTED';btn.classList.add('connected');
-    client=createClient({chain:studionet,account:walletAddress});
-    await client.connect('studionet');
-    const cta=document.getElementById('analyze-btn');cta.disabled=false;cta.textContent='REQUEST ANALYSIS';
+    const btn=document.getElementById('wallet-btn');
+    btn.textContent='CONNECTED';btn.classList.add('connected');
+    const cta=document.getElementById('analyze-btn');
+    cta.disabled=false;cta.textContent='REQUEST ANALYSIS';
     fetchLiveBadge(selectedCoin);
-  }catch(e){showStatus('Connection failed: '+e.message,true)}
+  }catch(e){showStatus('Connection failed: '+(e.message||String(e)),true);console.error(e);}
 });
 
 // Quick coins
@@ -822,11 +826,24 @@ async function analyze(){
     setPhase('Fetching Binance OHLCV data...');
     const ta=await fetchRealTA(selectedCoin,selectedTf);
     setPhase(`Price $${fmt(ta.current_price)} · RSI ${ta.rsi} · Submitting to GenLayer...`);
-    const txHash=await client.writeContract({address:CONTRACT,functionName:'request_analysis',args:[selectedCoin,selectedTf,JSON.stringify(ta)],value:BigInt(0)});
+    const txHash=await client.writeContract({
+      address:CONTRACT,
+      functionName:'request_analysis',
+      args:[selectedCoin,selectedTf,JSON.stringify(ta)],
+    });
     setPhase('Transaction submitted — AI Jury interpreting real indicators...');
-    await client.waitForTransactionReceipt({hash:txHash,status:TransactionStatus.FINALIZED,retries:60,interval:5000});
+    await client.waitForTransactionReceipt({
+      hash:txHash,
+      status:TransactionStatus.FINALIZED,
+      retries:60,
+      interval:5000,
+    });
     setPhase('Consensus reached — reading analysis...');
-    const raw=await client.readContract({address:CONTRACT,functionName:'get_result',args:[walletAddress]});
+    const raw=await client.readContract({
+      address:CONTRACT,
+      functionName:'get_result',
+      args:[walletAddress],
+    });
     const data=typeof raw==='string'?JSON.parse(raw):raw;
     if(data?.error)throw new Error(data.error);
     stopTimer();document.getElementById('loading').style.display='none';
