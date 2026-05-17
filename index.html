@@ -192,7 +192,8 @@
     .result-footer{text-align:center;margin-top:52px;padding-top:28px;border-top:1px solid var(--cream3)}
     .result-footer-text{font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4)}
     /* Language buttons */
-    .lang-btn{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 12px;background:var(--cream2);border:1.5px solid var(--cream3);color:var(--text3);cursor:pointer;border-radius:2px;transition:all .18s;touch-action:manipulation}
+    .lang-btn{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:5px 12px;background:var(--cream2);border:1.5px solid var(--cream3);color:var(--text3);cursor:pointer;border-radius:2px;transition:all .18s;touch-action:manipulation;display:inline-flex;align-items:center;gap:6px;line-height:1}
+.lang-btn img{display:block;border-radius:1px;flex-shrink:0}
     .lang-btn:hover,.lang-btn.active{border-color:var(--gold2);color:var(--gold);background:var(--gold-bg)}
     /* Stagger animations */
     .card-anim{animation:fadeUp .8s ease both}
@@ -233,15 +234,18 @@
       <div class="header-rule-line"></div>
     </div>
     <p class="subtitle" id="subtitle-text">Real Technical Analysis · Binance OHLCV · AI Interpretation</p>
-    <div style="margin-top:20px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap" role="group" aria-label="Language selection">
-      <button class="lang-btn active" data-lang="en" aria-pressed="true">🇬🇧 EN</button>
-      <button class="lang-btn" data-lang="de" aria-pressed="false">🇩🇪 DE</button>
-      <button class="lang-btn" data-lang="tr" aria-pressed="false">🇹🇷 TR</button>
-      <button class="lang-btn" data-lang="ar" aria-pressed="false">🇸🇦 AR</button>
-      <button class="lang-btn" data-lang="es" aria-pressed="false">🇪🇸 ES</button>
-      <button class="lang-btn" data-lang="fr" aria-pressed="false">🇫🇷 FR</button>
-      <button class="lang-btn" data-lang="ru" aria-pressed="false">🇷🇺 RU</button>
-      <button class="lang-btn" data-lang="zh" aria-pressed="false">🇨🇳 ZH</button>
+    <div style="margin-top:16px">
+      <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:5px 12px;cursor:pointer;border-radius:2px;touch-action:manipulation">⚠ DISCLAIMER</button>
+    </div>
+    <div style="margin-top:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap" role="group" aria-label="Language selection">
+      <button class="lang-btn active" data-lang="en" aria-pressed="true"><img src="https://flagcdn.com/20x15/gb.png" width="20" height="15" alt="EN"> EN</button>
+      <button class="lang-btn" data-lang="de" aria-pressed="false"><img src="https://flagcdn.com/20x15/de.png" width="20" height="15" alt="DE"> DE</button>
+      <button class="lang-btn" data-lang="tr" aria-pressed="false"><img src="https://flagcdn.com/20x15/tr.png" width="20" height="15" alt="TR"> TR</button>
+      <button class="lang-btn" data-lang="ar" aria-pressed="false"><img src="https://flagcdn.com/20x15/sa.png" width="20" height="15" alt="AR"> AR</button>
+      <button class="lang-btn" data-lang="es" aria-pressed="false"><img src="https://flagcdn.com/20x15/es.png" width="20" height="15" alt="ES"> ES</button>
+      <button class="lang-btn" data-lang="fr" aria-pressed="false"><img src="https://flagcdn.com/20x15/fr.png" width="20" height="15" alt="FR"> FR</button>
+      <button class="lang-btn" data-lang="ru" aria-pressed="false"><img src="https://flagcdn.com/20x15/ru.png" width="20" height="15" alt="RU"> RU</button>
+      <button class="lang-btn" data-lang="zh" aria-pressed="false"><img src="https://flagcdn.com/20x15/cn.png" width="20" height="15" alt="ZH"> ZH</button>
     </div>
   </div>
 
@@ -1113,16 +1117,23 @@ function renderResult(d, ta) {
 }
 
 // ── DISCLAIMER ────────────────────────────────
-try {
-  if (!localStorage.getItem('alpha_disclaimer_seen')) {
-    setTimeout(function() {
-      $('disclaimer-modal').style.display = 'flex';
-    }, 800);
-    localStorage.setItem('alpha_disclaimer_seen', '1');
+// Show disclaimer on first visit — use sessionStorage as primary,
+// localStorage as persistent fallback, plain variable if both fail
+(function() {
+  var shown = false;
+  try { shown = !!sessionStorage.getItem('alpha_disc'); } catch(e) {}
+  if (!shown) {
+    try { shown = !!localStorage.getItem('alpha_disclaimer_seen'); } catch(e) {}
   }
-} catch(e) {
-  // localStorage may be unavailable in private mode — safe to ignore
-}
+  if (!shown) {
+    setTimeout(function() {
+      var modal = document.getElementById('disclaimer-modal');
+      if (modal) modal.style.display = 'flex';
+    }, 600);
+    try { sessionStorage.setItem('alpha_disc', '1'); } catch(e) {}
+    try { localStorage.setItem('alpha_disclaimer_seen', '1'); } catch(e) {}
+  }
+})();
 </script>
 
 <!-- ── TRANSLATIONS & TRADE SUGGESTION ──────── -->
