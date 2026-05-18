@@ -509,11 +509,39 @@
             <div class="indicator-sub" id="r-vol-int"></div>
           </div>
         </div>
+        <div class="indicator-row">
+          <div class="indicator-key">HTF TREND</div>
+          <div>
+            <div class="indicator-val" id="r-htf-val">—</div>
+            <div class="indicator-sub" id="r-htf-sub"></div>
+          </div>
+        </div>
+        <div class="indicator-row">
+          <div class="indicator-key">FEAR &amp; GREED</div>
+          <div>
+            <div class="indicator-val" id="r-fg-val">—</div>
+            <div class="indicator-sub" id="r-fg-sub"></div>
+          </div>
+        </div>
+        <div class="indicator-row">
+          <div class="indicator-key">FUNDING</div>
+          <div>
+            <div class="indicator-val" id="r-funding-val">—</div>
+            <div class="indicator-sub" id="r-funding-sub"></div>
+          </div>
+        </div>
+        <div class="indicator-row">
+          <div class="indicator-key">MARKET</div>
+          <div>
+            <div class="indicator-val" id="r-regime-val">—</div>
+            <div class="indicator-sub" id="r-regime-sub"></div>
+          </div>
+        </div>
       </div>
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x738a...63D1</p>
+      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0xA425...6D4a</p>
       <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:6px 14px;cursor:pointer;border-radius:2px" id="disclaimer-btn">⚠ DISCLAIMER</button>
     </div>
   </div>
@@ -539,7 +567,7 @@
 //  Contract: 0x1893D07A28440adBAA9067fC5334d8B1668Ea119
 // ═══════════════════════════════════════════════════════════
 
-const CONTRACT = '0x738abF6fa04ed2a703350251bB10eb1d8b7063D1';
+const CONTRACT = '0xA4251c2c6CDc905A8971093270A2694212de6D4a';
 const STUDIO_RPC = 'https://studio.genlayer.com/api';
 const BINANCE_BASE = 'https://api.binance.com/api/v3';
 
@@ -748,6 +776,50 @@ function calcMACD(closes) {
   return { macdLine: macdLine, signal: signalLine, histogram: macdLine - signalLine };
 }
 
+// ATR: Average True Range over period
+
+// Multi-timeframe confirmation — fetch higher timeframe trend
+async function fetchHigherTFTrend(coin, tf) {
+  var higherTF = { '1h':'4h','2h':'4h','4h':'1d','8h':'1d','12h':'1d','1d':'1w','1w':'1w','1m':'1m' };
+  var htf = higherTF[tf] || '1d';
+  if (htf === tf) return null; // already at highest, skip
+  var sym = SYMBOLS[coin] || coin + 'USDT';
+  var interval = BINANCE_INTERVALS[htf] || '1d';
+  var url = BINANCE_BASE + '/klines?symbol=' + sym + '&interval=' + interval + '&limit=60';
+  try {
+    var klines = await _cachedFetch(url);
+    if (!klines || klines.length < 30) return null;
+    var closes = klines.map(function(k){ return parseFloat(k[4]); });
+    var ema20  = calcEMA(closes, 20);
+    var ema50  = calcEMA(closes, 50);
+    var price  = closes[closes.length - 1];
+    var htfTrend = (price > ema20 && ema20 > ema50) ? 'bullish'
+                 : (price < ema20 && ema20 < ema50) ? 'bearish'
+                 : 'neutral';
+    return { timeframe: htf, trend: htfTrend, ema20: ema20.toFixed(2), ema50: ema50.toFixed(2) };
+  } catch(e) {
+    console.warn('[HTF]', e.message);
+    return null;
+  }
+}
+
+// Fear & Greed Index fetch
+async function fetchFearGreed() {
+  try {
+    var url = 'https://api.alternative.me/fng/?limit=1';
+    var data = await _cachedFetch(url);
+    if (data && data.data && data.data[0]) {
+      var val   = parseInt(data.data[0].value);
+      var label = data.data[0].value_classification;
+      return { value: val, label: label };
+    }
+    return null;
+  } catch(e) {
+    console.warn('[FearGreed]', e.message);
+    return null;
+  }
+}
+
 // Swing highs/lows with configurable window
 function findSwingHighsLows(highs, lows, n) {
   n = n || 5;
@@ -763,6 +835,24 @@ function findSwingHighsLows(highs, lows, n) {
   supports.sort(function(a, b) { return b - a; });
   resistances.sort(function(a, b) { return a - b; });
   return { supports: supports, resistances: resistances };
+}
+
+// ATR: Average True Range — detects trending vs ranging markets
+function calcATR(highs, lows, closes, period) {
+  period = period || 14;
+  const trs = [];
+  for (let i = 1; i < closes.length; i++) {
+    const hl  = highs[i] - lows[i];
+    const hpc = Math.abs(highs[i] - closes[i - 1]);
+    const lpc = Math.abs(lows[i]  - closes[i - 1]);
+    trs.push(Math.max(hl, hpc, lpc));
+  }
+  // Wilder smoothing
+  let atr = trs.slice(0, period).reduce(function(a,b){return a+b;},0) / period;
+  for (let i = period; i < trs.length; i++) {
+    atr = (atr * (period - 1) + trs[i]) / period;
+  }
+  return atr;
 }
 
 async function fetchRealTA(coin, tf) {
@@ -839,6 +929,14 @@ async function fetchRealTA(coin, tf) {
   const price24hAgo = closes[closes.length - 24] || closes[0];
   const change24h   = ((price - price24hAgo) / price24hAgo * 100).toFixed(2);
 
+  // ATR — range detection
+  const atr     = calcATR(highs, lows, closes, 14);
+  const atrPct  = (atr / price * 100);           // ATR as % of price
+  // If price moved less than 60% of ATR over last 10 candles → likely ranging
+  const recentMove = Math.abs(closes[closes.length-1] - closes[closes.length-11]) / price * 100;
+  const isRanging  = recentMove < atrPct * 0.6;
+  const atrLabel   = isRanging ? 'ranging market' : 'trending market';
+
   function pct(a, b) { return (((a - b) / b) * 100).toFixed(2); }
 
   return {
@@ -871,6 +969,10 @@ async function fetchRealTA(coin, tf) {
     change_24h:      change24h,
     price_vs_ema50:  ((price - ema50)  / ema50  * 100).toFixed(2) + '% from EMA50',
     price_vs_ema200: ((price - ema200) / ema200 * 100).toFixed(2) + '% from EMA200',
+    atr:             atr.toFixed(4),
+    atr_pct:         atrPct.toFixed(2),
+    is_ranging:      isRanging ? 'true' : 'false',
+    market_regime:   atrLabel,
   };
 }
 
@@ -893,7 +995,73 @@ async function analyze() {
     setPhase('Fetching Binance OHLCV data...');
     const ta = await fetchRealTA(selectedCoin, selectedTf);
 
-    setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · Connecting to GenLayer...');
+    setPhase('Fetching sentiment data...');
+
+    // Fear & Greed Index (Alternative.me — no API key needed)
+    var fearGreedVal = '50', fearGreedLabel = 'Neutral';
+    try {
+      const fgRes  = await fetch('https://api.alternative.me/fng/?limit=1');
+      const fgData = await fgRes.json();
+      if (fgData.data && fgData.data[0]) {
+        fearGreedVal   = fgData.data[0].value;
+        fearGreedLabel = fgData.data[0].value_classification;
+      }
+    } catch(e) { console.warn('[FearGreed]', e.message); }
+
+    // Funding Rate (Binance perpetual futures — not available for all coins)
+    var fundingRate = null, fundingLabel = 'N/A';
+    try {
+      const sym = (selectedCoin === 'BTC' ? 'BTCUSDT' :
+                   selectedCoin === 'ETH' ? 'ETHUSDT' :
+                   selectedCoin === 'SOL' ? 'SOLUSDT' :
+                   selectedCoin === 'BNB' ? 'BNBUSDT' :
+                   selectedCoin === 'XRP' ? 'XRPUSDT' : null);
+      if (sym) {
+        const frRes  = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=' + sym);
+        const frData = await frRes.json();
+        if (frData.lastFundingRate) {
+          fundingRate  = parseFloat(frData.lastFundingRate) * 100;
+          fundingLabel = fundingRate > 0.05  ? 'Overheated Longs (bearish contrarian)'
+                       : fundingRate < -0.05 ? 'Overheated Shorts (bullish contrarian)'
+                       : 'Neutral';
+        }
+      }
+    } catch(e) { console.warn('[FundingRate]', e.message); }
+
+    // Multi-Timeframe Confirmation
+    var htfTrend = 'neutral';
+    var htfLabel = 'N/A';
+    try {
+      var htfMap = {'1h':'4h','2h':'4h','4h':'1d','8h':'1d','12h':'1d','1d':'1w','1w':'1w','1m':'1m'};
+      var htf    = htfMap[selectedTf] || '1d';
+      if (htf !== selectedTf) {
+        var htfInterval = BINANCE_INTERVALS[htf] || '1d';
+        var htfSym      = SYMBOLS[selectedCoin] || selectedCoin + 'USDT';
+        var htfUrl      = BINANCE_BASE + '/klines?symbol=' + htfSym + '&interval=' + htfInterval + '&limit=60';
+        var htfKlines   = await _cachedFetch(htfUrl);
+        if (htfKlines && htfKlines.length >= 30) {
+          var htfCloses = htfKlines.map(function(k){ return parseFloat(k[4]); });
+          var htfEma20  = calcEMA(htfCloses, 20);
+          var htfEma50  = calcEMA(htfCloses, 50);
+          var htfPrice  = htfCloses[htfCloses.length - 1];
+          htfTrend = (htfPrice > htfEma20 && htfEma20 > htfEma50) ? 'bullish'
+                   : (htfPrice < htfEma20 && htfEma20 < htfEma50) ? 'bearish'
+                   : 'neutral';
+          htfLabel = htf.toUpperCase() + ' trend: ' + htfTrend
+                   + ' (EMA20 $' + htfEma20.toFixed(2) + ' / EMA50 $' + htfEma50.toFixed(2) + ')';
+        }
+      }
+    } catch(e) { console.warn('[HTF]', e.message); }
+
+    // Attach all context data to ta object
+    ta.fear_greed_value = fearGreedVal;
+    ta.fear_greed_label = fearGreedLabel;
+    ta.funding_rate     = fundingRate !== null ? fundingRate.toFixed(4) : 'N/A';
+    ta.funding_label    = fundingLabel;
+    ta.htf_trend        = htfTrend;
+    ta.htf_label        = htfLabel;
+
+    setPhase('Price $' + fmt(ta.current_price) + ' · RSI ' + ta.rsi + ' · F&G ' + fearGreedVal + ' · HTF: ' + htfTrend.toUpperCase() + ' · Connecting...');
 
     // Lazy-load genlayer-js only when needed
     const glMod     = await import('https://esm.sh/genlayer-js@latest');
@@ -1103,6 +1271,128 @@ function renderResult(d, ta) {
   $('r-vol').innerHTML =
     '<strong>' + fmt(ta.volume) + '</strong> · ' + ta.volume_vs_avg;
   setText('r-vol-int', d.volume_interpretation || '');
+
+  // New indicator rows
+  var htfTrend   = d.htf_trend || ta.htf_trend || 'neutral';
+  var htfColors  = { bullish:'var(--green)', bearish:'var(--red)', neutral:'var(--gold)' };
+  var htfEl      = document.getElementById('r-htf-val');
+  if (htfEl) htfEl.innerHTML = '<strong style="color:' + (htfColors[htfTrend] || 'var(--gold)') + '">' + htfTrend.toUpperCase() + '</strong>';
+  setText('r-htf-sub', d.htf_label || ta.htf_label || 'N/A — already at highest timeframe');
+
+  var fgNum2  = parseInt(d.fear_greed_value || ta.fear_greed_value || '50');
+  var fg2El   = document.getElementById('r-fg-val');
+  if (fg2El && !isNaN(fgNum2)) {
+    var fg2Color = fgNum2 <= 25 ? 'var(--red)' : fgNum2 >= 75 ? 'var(--gold)' : 'var(--text2)';
+    fg2El.innerHTML = '<strong style="color:' + fg2Color + '">' + fgNum2 + '</strong> — ' + (d.fear_greed_label || ta.fear_greed_label || '');
+    setText('r-fg-sub', fgNum2 <= 25 ? '⚠ Extreme Fear — potential contrarian buy signal'
+                       : fgNum2 >= 75 ? '⚠ Extreme Greed — overbought warning'
+                       : 'Neutral sentiment zone');
+  }
+
+  var fundEl2 = document.getElementById('r-funding-val');
+  var fr2Val  = d.funding_rate || ta.funding_rate || 'N/A';
+  if (fundEl2) {
+    fundEl2.innerHTML = fr2Val === 'N/A'
+      ? '<span style="color:var(--text4)">N/A</span>'
+      : '<strong>' + (parseFloat(fr2Val) >= 0 ? '+' : '') + parseFloat(fr2Val).toFixed(4) + '%</strong>';
+    setText('r-funding-sub', d.funding_label || ta.funding_label || '');
+  }
+
+  var regEl2     = document.getElementById('r-regime-val');
+  var isRanging2 = (d.is_ranging === 'true' || ta.is_ranging === 'true');
+  if (regEl2) {
+    regEl2.innerHTML = isRanging2
+      ? '<strong style="color:var(--red)">⚠ RANGING / SIDEWAYS</strong>'
+      : '<strong style="color:var(--green)">TRENDING</strong>';
+    setText('r-regime-sub', isRanging2
+      ? 'Low volatility detected — reduce position size, wait for breakout'
+      : 'Trending conditions — TA signals carry higher conviction');
+  }
+
+  // ── Render Sentiment Panel ──────────────────────────────
+  const fgVal   = parseInt(ta.fear_greed_value || '50');
+  const fgLabel = ta.fear_greed_label || 'Neutral';
+  const fgColor = fgVal <= 25  ? 'var(--red)'
+                : fgVal <= 45  ? '#c07070'
+                : fgVal <= 55  ? 'var(--gold)'
+                : fgVal <= 75  ? '#7eb87e'
+                :                'var(--green)';
+  const fgWidth = fgVal + '%';
+
+  const frVal   = ta.funding_rate || 'N/A';
+  const frLabel = ta.funding_label || 'N/A';
+  const frColor = (ta.funding_label || '').includes('Longs')  ? 'var(--red)'
+                : (ta.funding_label || '').includes('Shorts') ? 'var(--green)'
+                : 'var(--gold)';
+
+  const isRanging    = ta.is_ranging === 'true';
+  const marketRegime = ta.market_regime || '';
+  const atrPct       = ta.atr_pct || '—';
+
+  let sentPanel = document.getElementById('sentiment-panel');
+  if (!sentPanel) {
+    sentPanel = document.createElement('div');
+    sentPanel.id = 'sentiment-panel';
+    sentPanel.className = 'card card-anim';
+    const verdictCard = document.querySelector('.verdict-card');
+    if (verdictCard && verdictCard.parentNode) {
+      verdictCard.parentNode.insertBefore(sentPanel, verdictCard);
+    }
+  }
+
+  sentPanel.innerHTML =
+    '<div class="card-title">MARKET CONTEXT</div>' +
+
+    // Fear & Greed
+    '<div style="margin-bottom:24px">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px">' +
+        '<div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--text4)">FEAR & GREED INDEX</div>' +
+        '<div style="font-family:var(--display);font-size:22px;font-weight:700;color:' + fgColor + '">' + fgVal + '<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:6px">' + fgLabel + '</span></div>' +
+      '</div>' +
+      '<div style="height:6px;background:linear-gradient(90deg,var(--red),var(--gold),var(--green));border-radius:3px;position:relative">' +
+        '<div style="position:absolute;top:-4px;left:' + fgWidth + ';width:14px;height:14px;border-radius:50%;background:var(--dark);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);transform:translateX(-50%)"></div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--text4);margin-top:6px">' +
+        '<span>0 Extreme Fear</span><span>25</span><span>50</span><span>75</span><span>Extreme Greed 100</span>' +
+      '</div>' +
+    '</div>' +
+
+    // Market Regime (ATR)
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">' +
+      '<div style="padding:14px 16px;border-radius:3px;border:1.5px solid ' + (isRanging ? 'rgba(139,41,41,0.3)' : 'rgba(45,106,63,0.3)') + ';background:' + (isRanging ? 'var(--red-bg)' : 'var(--green-bg)') + '">' +
+        '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text4);margin-bottom:6px">MARKET REGIME</div>' +
+        '<div style="font-family:var(--mono);font-size:12px;font-weight:600;color:' + (isRanging ? 'var(--red)' : 'var(--green)') + '">' + (isRanging ? '⚠ RANGING' : '✓ TRENDING') + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">' + (isRanging ? 'TA signals less reliable — reduce position size' : 'Indicators reliable — trend following valid') + '</div>' +
+      '</div>' +
+      '<div style="padding:14px 16px;border-radius:3px;border:1.5px solid var(--gold-border);background:var(--gold-bg)">' +
+        '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text4);margin-bottom:6px">ATR (' + atrPct + '%)</div>' +
+        '<div style="font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gold)">$' + fmt(ta.atr || 0) + '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Expected move per candle</div>' +
+      '</div>' +
+    '</div>' +
+
+    // Higher Timeframe Trend
+    '<div style="padding:12px 16px;border-radius:3px;border:1.5px solid rgba(154,111,26,0.2);background:var(--cream);margin-bottom:12px">' +
+      '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text4);margin-bottom:6px">HIGHER TIMEFRAME CONFIRMATION</div>' +
+      (ta.htf_label ?
+        '<div style="font-family:var(--mono);font-size:12px;font-weight:600;color:' +
+          (ta.htf_trend === 'bullish' ? 'var(--green)' : ta.htf_trend === 'bearish' ? 'var(--red)' : 'var(--gold)') + '">' +
+          (ta.htf_trend || 'NEUTRAL').toUpperCase() +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">' + (ta.htf_label || '') + '</div>'
+      : '<div style="font-size:11px;color:var(--text4);font-style:italic">N/A — already at highest timeframe</div>') +
+    '</div>' +
+
+    // Funding Rate
+    (frVal !== 'N/A' ?
+      '<div style="padding:12px 16px;border-radius:3px;border:1.5px solid rgba(154,111,26,0.2);background:var(--cream);display:flex;justify-content:space-between;align-items:center">' +
+        '<div>' +
+          '<div style="font-family:var(--mono);font-size:9px;letter-spacing:2px;color:var(--text4);margin-bottom:4px">FUNDING RATE (8H)</div>' +
+          '<div style="font-size:12px;color:var(--text3);font-style:italic">' + frLabel + '</div>' +
+        '</div>' +
+        '<div style="font-family:var(--mono);font-size:16px;font-weight:600;color:' + frColor + '">' + frVal + '%</div>' +
+      '</div>'
+    : '');
 
   $('result').style.display = 'block';
 
