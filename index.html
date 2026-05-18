@@ -1100,42 +1100,43 @@ async function analyze() {
       args:         [selectedCoin, selectedTf, JSON.stringify(ta), window.currentLang || 'en'],
     });
 
-    setPhase('AI Jury deliberating — waiting for consensus...');
-    await client.waitForTransactionReceipt({
-      hash:     txHash,
-      status:   typesMod.TransactionStatus.FINALIZED,
-      retries:  72,
-      interval: 5000,
-    });
-
-    setPhase('Consensus reached — reading analysis...');
-
-    // Retry loop — contract state may take a few seconds to be readable
+    // Poll get_result directly — more reliable than waitForTransactionReceipt + read
+    // GenLayer may finalize the tx but write storage slightly after
+    setPhase('AI Jury deliberating...');
     let data = null;
-    for (let attempt = 1; attempt <= 10; attempt++) {
-      await new Promise(function(r){ setTimeout(r, attempt === 1 ? 2000 : 5000); });
-      setPhase('Reading result — attempt ' + attempt + '/10...');
+    const coinAtSubmit = selectedCoin;
+    const tfAtSubmit   = selectedTf;
+
+    for (let attempt = 1; attempt <= 60; attempt++) {
+      const waitMs = attempt <= 6 ? 5000 : 8000;
+      await new Promise(function(r){ setTimeout(r, waitMs); });
+      const elapsed = Math.round((attempt * waitMs) / 1000);
+      setPhase('AI Jury deliberating — ' + elapsed + 's elapsed (attempt ' + attempt + '/60)...');
+
       try {
         const raw = await client.readContract({
           address:      CONTRACT,
           functionName: 'get_result',
-          args:         [walletAddress, selectedCoin, selectedTf],
+          args:         [walletAddress, coinAtSubmit, tfAtSubmit],
         });
-        if (!raw || raw === '') {
-          console.warn('[Read] Empty result on attempt', attempt);
-          continue;
-        }
-        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
-        if (parsed && parsed.trend) {
+
+        // raw can be: null, undefined, "", or a JSON string
+        if (!raw || typeof raw !== 'string' || raw.trim() === '') continue;
+
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch(e) { continue; }
+
+        // Validate the result belongs to this request
+        if (parsed && parsed.trend && parsed.coin === coinAtSubmit) {
           data = parsed;
           break;
         }
-        console.warn('[Read] No trend in result on attempt', attempt, parsed);
-      } catch(readErr) {
-        console.warn('[Read] Attempt', attempt, 'failed:', readErr.message);
+      } catch(e) {
+        console.warn('[Poll attempt ' + attempt + ']', e.message);
       }
     }
-    if (!data) throw new Error('Analysis could not be retrieved after 10 attempts. The transaction may have failed — please try again.');
+
+    if (!data) throw new Error('Analysis timed out after 8 minutes. GenLayer may be congested — please try again.');
     if (data.error) throw new Error(data.error);
 
     stopTimer();
