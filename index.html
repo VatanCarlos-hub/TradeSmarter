@@ -1109,22 +1109,33 @@ async function analyze() {
     });
 
     setPhase('Consensus reached — reading analysis...');
-    // Small delay to ensure state is committed on-chain
-    await new Promise(function(r){ setTimeout(r, 2000); });
-    const raw = await client.readContract({
-      address:      CONTRACT,
-      functionName: 'get_result',
-      args:         [walletAddress, selectedCoin, selectedTf],
-    });
 
-    // Safe JSON parse — empty string means tx not finalized yet
+    // Retry loop — contract state may take a few seconds to be readable
     let data = null;
-    try {
-      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    } catch(jsonErr) {
-      throw new Error('Analysis not ready yet — transaction may still be processing. Wait 30 seconds and try again.');
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      await new Promise(function(r){ setTimeout(r, attempt === 1 ? 2000 : 5000); });
+      setPhase('Reading result — attempt ' + attempt + '/10...');
+      try {
+        const raw = await client.readContract({
+          address:      CONTRACT,
+          functionName: 'get_result',
+          args:         [walletAddress, selectedCoin, selectedTf],
+        });
+        if (!raw || raw === '') {
+          console.warn('[Read] Empty result on attempt', attempt);
+          continue;
+        }
+        const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (parsed && parsed.trend) {
+          data = parsed;
+          break;
+        }
+        console.warn('[Read] No trend in result on attempt', attempt, parsed);
+      } catch(readErr) {
+        console.warn('[Read] Attempt', attempt, 'failed:', readErr.message);
+      }
     }
-    if (!data || !data.trend) throw new Error('No result returned — transaction may not have finalized. Please try again in 30 seconds.');
+    if (!data) throw new Error('Analysis could not be retrieved after 10 attempts. The transaction may have failed — please try again.');
     if (data.error) throw new Error(data.error);
 
     stopTimer();
