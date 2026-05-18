@@ -1117,9 +1117,15 @@ async function analyze() {
       args:         [walletAddress, selectedCoin, selectedTf],
     });
 
-    const data = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (data && data.error) throw new Error(data.error);
-    if (!data || !data.trend) throw new Error('No analysis returned — the transaction may not have finalized. Please try again.');
+    // Safe JSON parse — empty string means tx not finalized yet
+    let data = null;
+    try {
+      data = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch(jsonErr) {
+      throw new Error('Analysis not ready yet — transaction may still be processing. Wait 30 seconds and try again.');
+    }
+    if (!data || !data.trend) throw new Error('No result returned — transaction may not have finalized. Please try again in 30 seconds.');
+    if (data.error) throw new Error(data.error);
 
     stopTimer();
     $('loading').style.display = 'none';
