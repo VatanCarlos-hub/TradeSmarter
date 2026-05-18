@@ -345,7 +345,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x0cdD...a662</p>
+      <p class="result-footer-text">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x8A32...ae3d</p>
       <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:6px 14px;cursor:pointer;border-radius:2px">⚠ DISCLAIMER</button>
     </div>
   </div>
@@ -365,7 +365,7 @@
 </div>
 
 <script>
-const CONTRACT   = '0x0cdD4057c02e391734aE7DD674DD29067fe6a662';
+const CONTRACT   = '0x8A32Ed64C1C706fBe8DabfeB18766eB4d9d0ae3d';
 const STUDIO_RPC = 'https://studio.genlayer.com/api';
 const BINANCE_BASE = 'https://api.binance.com/api/v3';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
@@ -536,10 +536,10 @@ async function analyze(){
     const client=glMod.createClient({chain:chainsMod.studionet,account:walletAddress});
 
     setPhase('Submitting to GenLayer AI Jury...');
-    const txHash=await client.writeContract({
+    const txHash = await client.writeContract({
       address:      CONTRACT,
       functionName: 'request_analysis',
-      args:         [selectedCoin, selectedTf, JSON.stringify(ta)],
+      args:         [selectedCoin, selectedTf, JSON.stringify(ta), window.currentLang || 'en'],
     });
 
     setPhase('AI Jury deliberating — waiting for consensus...');
@@ -547,7 +547,7 @@ async function analyze(){
 
     setPhase('Consensus reached — reading analysis...');
     await new Promise(function(r){setTimeout(r,2000);});
-    const raw=await client.readContract({address:CONTRACT,functionName:'get_result',args:[walletAddress]});
+    const raw=await client.readContract({address:CONTRACT,functionName:'get_result',args:[walletAddress,selectedCoin,selectedTf]});
 
     let data=null;
     try{ data=typeof raw==='string'?JSON.parse(raw):raw; }catch(e){ throw new Error('Result parse failed — please try again.'); }
