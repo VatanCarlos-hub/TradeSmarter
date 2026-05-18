@@ -372,6 +372,7 @@ const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT'};
 
 let walletAddress = null, selectedCoin = 'BTC', selectedTf = '4h';
+window.currentLang = 'en';
 let timerInterval = null, elapsed = 0;
 
 const _apiCache = Object.create(null);
@@ -430,6 +431,8 @@ document.querySelectorAll('.lang-btn').forEach(function(b){
   b.addEventListener('click',function(){
     document.querySelectorAll('.lang-btn').forEach(function(x){x.classList.remove('active');});
     b.classList.add('active');
+    window.currentLang = b.dataset.lang || 'en';
+    document.body.style.direction = (window.currentLang === 'ar') ? 'rtl' : 'ltr';
   });
 });
 
@@ -534,12 +537,14 @@ async function analyze(){
     }catch(se){ console.warn('[ChainSwitch]',se.message); }
 
     const client=glMod.createClient({chain:chainsMod.studionet,account:walletAddress});
+    try { await client.connect('studionet'); } catch(ce) { console.warn('[Connect]',ce.message); }
 
     setPhase('Submitting to GenLayer AI Jury...');
     const txHash = await client.writeContract({
       address:      CONTRACT,
       functionName: 'request_analysis',
       args:         [selectedCoin, selectedTf, JSON.stringify(ta), window.currentLang || 'en'],
+      value:        BigInt(0),
     });
 
     setPhase('AI Jury deliberating — waiting for consensus...');
