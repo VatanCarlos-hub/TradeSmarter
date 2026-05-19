@@ -172,6 +172,14 @@
     .lang-btn:hover,.lang-btn.active{border-color:var(--gold2);color:var(--gold);background:var(--gold-bg)}
     .card-anim{animation:fadeUp .8s ease both}
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+    .wallet-modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,22,16,0.88);z-index:9998;align-items:center;justify-content:center;padding:24px}
+    .wallet-modal-box{background:var(--cream);border-radius:4px;max-width:420px;width:100%;padding:36px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.35)}
+    .wallet-option{display:flex;align-items:center;gap:16px;padding:16px 20px;border:1.5px solid var(--cream3);border-radius:3px;cursor:pointer;margin-bottom:10px;background:#fff;transition:all .18s;touch-action:manipulation}
+    .wallet-option:hover{border-color:var(--gold2);background:var(--gold-bg)}
+    .wallet-option:last-child{margin-bottom:0}
+    .wallet-option-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+    .wallet-option-name{font-family:var(--mono);font-size:12px;letter-spacing:2px;color:var(--dark);font-weight:500}
+    .wallet-option-desc{font-size:12px;color:var(--text4);margin-top:2px}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
     ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--cream3)}
@@ -360,6 +368,20 @@
   </div>
 </div>
 
+<!-- Wallet Selection Modal -->
+<div id="wallet-modal" class="wallet-modal-overlay" style="display:none">
+  <div class="wallet-modal-box">
+    <button onclick="document.getElementById('wallet-modal').style.display='none'" style="position:absolute;top:14px;right:18px;font-size:20px;background:none;border:none;cursor:pointer;color:var(--text4)">✕</button>
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:4px;color:var(--text4);margin-bottom:20px">CONNECT WALLET</div>
+    <div id="wallet-options-list">
+      <!-- populated by JS -->
+    </div>
+    <div style="margin-top:16px;font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;letter-spacing:1px;line-height:1.6">
+      By connecting you agree to the disclaimer.<br>Alpha Signal runs on GenLayer Studionet.
+    </div>
+  </div>
+</div>
+
 <!-- Disclaimer Modal -->
 <div id="disclaimer-modal" style="display:none;position:fixed;inset:0;background:rgba(26,22,16,0.85);z-index:9999;align-items:center;justify-content:center;padding:24px">
   <div style="background:var(--cream);border-radius:4px;max-width:560px;width:100%;padding:40px;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
@@ -396,22 +418,123 @@ function setText(id,t){const e=$(id);if(e)e.textContent=t;}
 window.setText=setText;
 function debounce(fn,ms){let t;return function(){clearTimeout(t);t=setTimeout(fn,ms);};}
 
-// WALLET
-$('wallet-btn').addEventListener('click',async function(){
-  if(!window.ethereum){showStatus('MetaMask not detected.',true);return;}
+// ── WALLET MULTI-PROVIDER ────────────────────────────────────
+const WC_PROJECT_ID = 'e40d93e27b32349a99a47db1758f665f'; // get free at cloud.walletconnect.com
+var activeProvider = null;
+
+// Collect EIP-6963 announced wallets
+var eip6963Wallets = [];
+window.addEventListener('eip6963:announceProvider', function(e){
+  if(e.detail && e.detail.provider) eip6963Wallets.push(e.detail);
+});
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+
+function onWalletConnected(provider, accounts){
+  activeProvider = provider;
+  window.ethereum = provider; // make genlayer-js happy
+  walletAddress = accounts[0];
+  window.walletAddress = walletAddress;
+  $('wallet-addr').textContent = walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
+  $('wallet-dot').classList.add('connected');
+  const btn=$('wallet-btn');
+  const T=TRANSLATIONS[window.currentLang]||TRANSLATIONS.en;
+  btn.textContent=T.connected_btn; btn.classList.add('connected');
+  const cta=$('analyze-btn'); cta.disabled=false; cta.textContent=T.analyze_btn;
+  document.getElementById('wallet-modal').style.display='none';
+  fetchLiveBadge(selectedCoin);
+}
+
+async function connectInjected(providerInfo){
   try{
-    const accounts=await window.ethereum.request({method:'eth_requestAccounts'});
-    walletAddress=accounts[0];
-    window.walletAddress=walletAddress;
-    $('wallet-addr').textContent=walletAddress.slice(0,6)+'...'+walletAddress.slice(-4);
-    $('wallet-dot').classList.add('connected');
-    const btn=$('wallet-btn');
-    const T=TRANSLATIONS[window.currentLang]||TRANSLATIONS.en;
-    btn.textContent=T.connected_btn; btn.classList.add('connected');
-    const cta=$('analyze-btn');
-    cta.disabled=false; cta.textContent=T.analyze_btn;
-    fetchLiveBadge(selectedCoin);
-  }catch(e){showStatus('Connection failed: '+(e.message||e),true);}
+    const prov = providerInfo ? providerInfo.provider : window.ethereum;
+    if(!prov) throw new Error('No injected wallet found');
+    const accounts = await prov.request({method:'eth_requestAccounts'});
+    onWalletConnected(prov, accounts);
+  }catch(e){ showStatus('Connection failed: '+(e.message||e),true); }
+}
+
+async function connectWalletConnect(){
+  try{
+    setPhase('Loading WalletConnect...');
+    const {EthereumProvider} = await import('https://esm.sh/@walletconnect/ethereum-provider@2');
+    const wcp = await EthereumProvider.init({
+      projectId: WC_PROJECT_ID,
+      chains: [4337], // GenLayer studionet chain id — adjust if needed
+      showQrModal: true,
+      metadata: {
+        name: 'Alpha Signal',
+        description: 'AI Jury TA on GenLayer',
+        url: window.location.origin,
+        icons: [window.location.origin+'/favicon.ico'],
+      },
+    });
+    await wcp.connect();
+    onWalletConnected(wcp, wcp.accounts);
+  }catch(e){ showStatus('WalletConnect failed: '+(e.message||e),true); }
+}
+
+function openWalletModal(){
+  const list = document.getElementById('wallet-options-list');
+  list.innerHTML = '';
+
+  // Build options
+  var options = [];
+
+  // EIP-6963 wallets (Rabby, Phantom, Frame, etc.)
+  eip6963Wallets.forEach(function(w){
+    options.push({
+      name: w.info.name,
+      desc: 'Detected wallet',
+      icon: w.info.icon ? '<img src="'+w.info.icon+'" style="width:28px;height:28px;border-radius:6px">' : '🔗',
+      action: function(){ connectInjected(w); }
+    });
+  });
+
+  // MetaMask (window.ethereum fallback if no EIP-6963)
+  if(eip6963Wallets.length === 0 && window.ethereum){
+    options.push({
+      name:'MetaMask',
+      desc:'Browser extension',
+      icon:'<img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg" style="width:28px;height:28px">',
+      action: function(){ connectInjected(null); }
+    });
+  }
+
+  // WalletConnect (always available — mobile friendly)
+  options.push({
+    name:'WalletConnect',
+    desc:'Scan QR · Mobile wallets · 400+ wallets',
+    icon:'<div style="width:28px;height:28px;background:#3B99FC;border-radius:6px;display:flex;align-items:center;justify-content:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="none"><path d="M3.68 2.37C6.62-.52 11.38-.52 14.32 2.37L14.7 2.74a.38.38 0 0 1 0 .54l-1.3 1.27a.19.19 0 0 1-.27 0l-.52-.51C10.71 2.2 7.29 2.2 5.39 4.04l-.56.54a.19.19 0 0 1-.27 0L3.27 3.31a.38.38 0 0 1 0-.54l.41-.4ZM16.8 4.82l1.16 1.13a.38.38 0 0 1 0 .54l-5.21 5.1a.38.38 0 0 1-.54 0L8.46 7.88a.1.1 0 0 0-.13 0L4.57 11.6a.38.38 0 0 1-.54 0L.82 6.49a.38.38 0 0 1 0-.54L1.98 4.82a.38.38 0 0 1 .54 0l3.76 3.68a.1.1 0 0 0 .14 0l3.76-3.68a.38.38 0 0 1 .54 0l3.76 3.68a.1.1 0 0 0 .14 0L17.34 4.82a.38.38 0 0 1 .54 0Z" fill="white"/></svg></div>',
+    action: function(){ connectWalletConnect(); }
+  });
+
+  // Coinbase Wallet
+  options.push({
+    name:'Coinbase Wallet',
+    desc:'Get the Coinbase Wallet app',
+    icon:'<div style="width:28px;height:28px;background:#0052FF;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px">🔵</div>',
+    action: function(){
+      if(window.coinbaseWalletExtension){ connectInjected({provider:window.coinbaseWalletExtension}); }
+      else{ window.open('https://www.coinbase.com/wallet','_blank'); }
+    }
+  });
+
+  options.forEach(function(opt){
+    var div = document.createElement('div');
+    div.className = 'wallet-option';
+    div.innerHTML = '<div class="wallet-option-icon">'+opt.icon+'</div>'
+      +'<div><div class="wallet-option-name">'+opt.name+'</div>'
+      +'<div class="wallet-option-desc">'+opt.desc+'</div></div>';
+    div.onclick = opt.action;
+    list.appendChild(div);
+  });
+
+  document.getElementById('wallet-modal').style.display='flex';
+}
+
+$('wallet-btn').addEventListener('click', function(){
+  if(walletAddress) return; // already connected
+  openWalletModal();
 });
 
 document.querySelectorAll('.qc').forEach(function(b){
