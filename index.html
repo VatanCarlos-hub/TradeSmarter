@@ -520,26 +520,27 @@ async function analyze(){
   btn.disabled=true; btn.textContent='PROCESSING...';
   $('result').style.display='none'; $('loading').style.display='block';
   showStatus(''); startTimer();
+  var oldRetry=document.getElementById('retry-btn'); if(oldRetry) oldRetry.remove();
   setTimeout(function(){$('loading').scrollIntoView({behavior:'smooth',block:'center'});},100);
   try{
     setPhase('Fetching Binance OHLCV data...');
     const ta=await fetchRealTA(selectedCoin,selectedTf);
 
     // Fear & Greed
-    var fearGreedVal='50',fearGreedLabel='Neutral';
-    try{const fg=await fetch('https://api.alternative.me/fng/?limit=1');const fgd=await fg.json();if(fgd.data&&fgd.data[0]){fearGreedVal=fgd.data[0].value;fearGreedLabel=fgd.data[0].value_classification;}}catch(e){}
+    var fearGreedVal='50',fearGreedLabel='Neutral',fgOk=false;
+    try{const fg=await fetch('https://api.alternative.me/fng/?limit=1');const fgd=await fg.json();if(fgd.data&&fgd.data[0]){fearGreedVal=fgd.data[0].value;fearGreedLabel=fgd.data[0].value_classification;fgOk=true;}}catch(e){console.warn('[F&G unavailable]',e.message);}
 
     // Funding Rate
-    var fundingRate=null,fundingLabel='N/A';
+    var fundingRate=null,fundingLabel='N/A',fundOk=false;
     try{
       const fsym={BTC:'BTCUSDT',ETH:'ETHUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',XRP:'XRPUSDT'}[selectedCoin];
-      if(fsym){const fr=await fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol='+fsym);const frd=await fr.json();if(frd.lastFundingRate){fundingRate=parseFloat(frd.lastFundingRate)*100;fundingLabel=fundingRate>0.05?'Overheated Longs':fundingRate<-0.05?'Overheated Shorts':'Neutral';}}
-    }catch(e){}
+      if(fsym){const fr=await fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol='+fsym);const frd=await fr.json();if(frd.lastFundingRate){fundingRate=parseFloat(frd.lastFundingRate)*100;fundingLabel=fundingRate>0.05?'Overheated Longs':fundingRate<-0.05?'Overheated Shorts':'Neutral';fundOk=true;}}
+    }catch(e){console.warn('[Funding unavailable]',e.message);}
 
     // Higher Timeframe
     var htfTrend='neutral',htfLabel='N/A';
     try{
-      const htfMap={'1h':'4h','2h':'4h','4h':'1d','8h':'1d','12h':'1d','1d':'1w','1w':'1w','1m':'1m'};
+      const htfMap={'1h':'4h','2h':'4h','4h':'1d','8h':'1d','12h':'1d','1d':'1w','1w':'1m','1m':'1m'};
       const htf=htfMap[selectedTf]||'1d';
       if(htf!==selectedTf){
         const htfKlines=await _cachedFetch(BINANCE_BASE+'/klines?symbol='+(SYMBOLS[selectedCoin]||selectedCoin+'USDT')+'&interval='+(BINANCE_INTERVALS[htf]||'1d')+'&limit=60');
@@ -556,7 +557,10 @@ async function analyze(){
     ta.funding_rate=fundingRate!==null?fundingRate.toFixed(4):'N/A'; ta.funding_label=fundingLabel;
     ta.htf_trend=htfTrend; ta.htf_label=htfLabel;
 
-    setPhase('Price $'+fmt(ta.current_price)+' · RSI '+ta.rsi+' · Connecting to GenLayer...');
+    var dataWarnings=[];
+    if(!fgOk) dataWarnings.push('F&G unavailable');
+    if(!fundOk&&{BTC:1,ETH:1,SOL:1,BNB:1,XRP:1}[selectedCoin]) dataWarnings.push('Funding unavailable');
+    setPhase('Price $'+fmt(ta.current_price)+' · RSI '+ta.rsi+(dataWarnings.length?' · ⚠ '+dataWarnings.join(', '):'')+' · Connecting...');
 
     const glMod=await import('https://esm.sh/genlayer-js@latest');
     const chainsMod=await import('https://esm.sh/genlayer-js@latest/chains');
@@ -603,8 +607,19 @@ async function analyze(){
     renderResult(data,ta);
   }catch(e){
     stopTimer(); $('loading').style.display='none';
-    showStatus('Error: '+(e.message||String(e)),true);
+    var errMsg='Error: '+(e.message||String(e));
+    showStatus(errMsg,true);
     console.error('[Analyze]',e);
+    // Add retry button inline under error
+    var existingRetry=document.getElementById('retry-btn');
+    if(!existingRetry){
+      var retryBtn=document.createElement('button');
+      retryBtn.id='retry-btn';
+      retryBtn.textContent='↺ RETRY ANALYSIS';
+      retryBtn.style.cssText='margin-top:10px;width:100%;padding:12px;font-family:var(--mono);font-size:11px;letter-spacing:3px;background:var(--dark);color:var(--cream);border:none;cursor:pointer;border-radius:2px;touch-action:manipulation';
+      retryBtn.onclick=function(){document.getElementById('retry-btn').remove();analyze();};
+      $('status-msg').after(retryBtn);
+    }
   }
   btn.disabled=false;
   const T=TRANSLATIONS[window.currentLang]||TRANSLATIONS.en;
@@ -635,6 +650,16 @@ function renderResult(d,ta){
   setText('r-verdict',d.verdict||'—');
   const conf=d.confidence||'MEDIUM',cb=$('r-confidence-badge');
   cb.textContent=conf;cb.className='confidence-badge '+conf;
+  // Score transparency note
+  var scoreNote=document.getElementById('score-note');
+  if(!scoreNote){
+    scoreNote=document.createElement('div');
+    scoreNote.id='score-note';
+    scoreNote.style.cssText='margin-top:12px;font-family:var(--mono);font-size:10px;color:var(--text4);letter-spacing:1px;line-height:1.6;border-top:1px solid var(--cream3);padding-top:12px';
+    $('r-confidence-badge').closest('.verdict-card').appendChild(scoreNote);
+  }
+  var sc=d.signal_score||'—';
+  scoreNote.textContent='SIGNAL SCORE '+sc+' · Deterministic 6-factor model (EMA cross, price vs EMA50/200, RSI, MACD histogram, 24h momentum) weighted by volume, HTF confirmation and sentiment. Probabilities are model outputs, not statistical forecasts.';
   const bull=+(d.bull_probability||0),bear=+(d.bear_probability||0),neutral=+(d.neutral_probability||0);
   setTimeout(function(){$('pb-bull').style.height=bull+'%';$('pb-neutral').style.height=neutral+'%';$('pb-bear').style.height=bear+'%';},150);
   setText('p-bull',bull);setText('p-neutral',neutral);setText('p-bear',bear);
@@ -691,7 +716,12 @@ function renderResult(d,ta){
   var frColor=(ta.funding_label||'').includes('Longs')?'var(--red)':(ta.funding_label||'').includes('Shorts')?'var(--green)':'var(--gold)';
   var isR=ta.is_ranging==='true';
   var sp=document.getElementById('sentiment-panel');
-  if(!sp){sp=document.createElement('div');sp.id='sentiment-panel';sp.className='card card-anim';var vc=document.querySelector('.verdict-card');if(vc&&vc.parentNode)vc.parentNode.insertBefore(sp,vc);}
+  if(!sp){
+    sp=document.createElement('div');sp.id='sentiment-panel';sp.className='card card-anim';
+    var vc=document.querySelector('.verdict-card');
+    if(vc&&vc.parentNode){vc.parentNode.insertBefore(sp,vc);}
+    else{document.getElementById('result').appendChild(sp);}
+  }
   sp.innerHTML='<div class="card-title">MARKET CONTEXT</div>'
     +'<div style="margin-bottom:24px">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><div style="font-family:var(--mono);font-size:10px;letter-spacing:3px;color:var(--text4)">FEAR & GREED INDEX</div><div style="font-family:var(--display);font-size:22px;font-weight:700;color:'+fgColor+'">'+fgVal+'<span style="font-size:13px;font-weight:400;color:var(--text3);margin-left:6px">'+fgLbl+'</span></div></div>'
