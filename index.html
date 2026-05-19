@@ -581,61 +581,12 @@ function calcATR(h,l,c,p){p=p||14;const t=[];for(let i=1;i<c.length;i++)t.push(M
 function findSwingHighsLows(h,l,n){n=n||5;const s=[],r=[];for(let i=n;i<l.length-n;i++){const sl=l.slice(i-n,i+n+1);if(l[i]===Math.min.apply(null,sl))s.push(l[i]);}for(let i=n;i<h.length-n;i++){const sh=h.slice(i-n,i+n+1);if(h[i]===Math.max.apply(null,sh))r.push(h[i]);}s.sort(function(a,b){return b-a;});r.sort(function(a,b){return a-b;});return{supports:s,resistances:r};}
 
 async function fetchRealTA(coin,tf){
-  const sym=SYMBOLS[coin]||coin+'USDT';
-  const interval=BINANCE_INTERVALS[tf]||'4h';
-  const limit=(tf==='1w'||tf==='1m')?100:200;
-  const klines=await _cachedFetch(BINANCE_BASE+'/klines?symbol='+sym+'&interval='+interval+'&limit='+limit);
-  if(!klines||klines.length<10) throw new Error('Not enough data for '+sym);
-  const highs=klines.map(function(k){return parseFloat(k[2]);}),lows=klines.map(function(k){return parseFloat(k[3]);});
-  const closes=klines.map(function(k){return parseFloat(k[4]);}),volumes=klines.map(function(k){return parseFloat(k[5]);});
-  const price=closes[closes.length-1];
-  const rsi=calcRSI(closes,14),ema50=calcEMA(closes,50),ema200=calcEMA(closes,200);
-  const macdR=calcMACD(closes);
-  const curVol=volumes[volumes.length-2],avgVol=volumes.slice(-21,-1).reduce(function(a,b){return a+b;},0)/20;
-  const volRatioRaw=curVol/avgVol,volRatio=(volRatioRaw*100).toFixed(0);
-  const swingN=klines.length<50?3:5,sr=findSwingHighsLows(highs,lows,swingN);
-  const supports=sr.supports,resistances=sr.resistances;
-  const minDist={'1h':0.008,'2h':0.012,'4h':0.018,'8h':0.024,'12h':0.030,'1d':0.045,'1w':0.07,'1m':0.10};
-  const md=minDist[tf]||0.025;
-  const s1=supports.find(function(s){return s<=price*(1-md);})||price*(1-md*1.4);
-  let s2=supports.find(function(s){return s<=price*(1-md*1.8);})||s1*(1-md*0.9);
-  var emaR1=null,emaR2=null;
-  if(ema50>price*(1+md*0.5))emaR1=ema50;
-  if(ema200>price*(1+md*0.5)){if(emaR1&&ema200>emaR1*(1+md*0.3))emaR2=ema200;else if(!emaR1)emaR1=ema200;}
-  var r1Swing=resistances.find(function(r){return r>=price*(1+md);});
-  var maxR2=price*(tf==='1w'?1.55:tf==='1m'?1.80:1.35);
-  var r1=(emaR1&&r1Swing)?Math.min(emaR1,r1Swing):(emaR1||r1Swing||price*(1+md*1.4));
-  var r2Swing=r1Swing?resistances.find(function(r){return r>=r1Swing*(1+md*0.5);}):null;
-  var r2Cands=[emaR2,r2Swing].filter(function(x){return x&&x>=r1*(1+md)&&x<=maxR2;});
-  var r2=r2Cands.length>0?Math.min.apply(null,r2Cands):Math.min(r1*(1+md*1.5),maxR2);
-  var minS2=price*(tf==='1w'?0.55:tf==='1m'?0.45:0.65);
-  if(s2>=s1*(1-md*0.3))s2=s1*(1-md*1.0);
-  if(s2<minS2)s2=Math.max(s2,minS2);
-  const dt1=s2,dt2=supports.find(function(s){return s<s2*(1-md*0.3);})||s2*(1-md*1.0);
-  const bt1=r1,bt2=r2;
-  const price24hAgo=closes[closes.length-24]||closes[0],change24h=((price-price24hAgo)/price24hAgo*100).toFixed(2);
-  const atr=calcATR(highs,lows,closes,14),atrPct=(atr/price*100);
-  const recentMove=Math.abs(closes[closes.length-1]-closes[closes.length-11])/price*100;
-  const isRanging=recentMove<atrPct*0.6;
-  function pct(a,b){return(((a-b)/b)*100).toFixed(2);}
-  return{
-    current_price:price.toFixed(2),support_1:s1.toFixed(2),support_2:s2.toFixed(2),
-    resistance_1:r1.toFixed(2),resistance_2:r2.toFixed(2),
-    bull_target_1:bt1.toFixed(2),bull_target_2:bt2.toFixed(2),
-    bear_target_1:dt1.toFixed(2),bear_target_2:dt2.toFixed(2),
-    bull_gain_1:'+'+pct(bt1,price)+'%',bull_gain_2:'+'+pct(bt2,price)+'%',
-    bear_loss_1:pct(dt1,price)+'%',bear_loss_2:pct(dt2,price)+'%',
-    volume_ratio:volRatioRaw.toFixed(3),rsi:rsi.toFixed(1),
-    ema50:ema50.toFixed(2),ema200:ema200.toFixed(2),
-    ema_cross:ema50>ema200?'EMA50 above EMA200 (golden cross — bullish)':'EMA50 below EMA200 (death cross — bearish)',
-    macd:macdR.macdLine.toFixed(4),macd_signal:macdR.signal.toFixed(4),macd_hist:macdR.histogram.toFixed(4),
-    macd_status:macdR.histogram>0?'Histogram positive (bullish momentum)':'Histogram negative (bearish momentum)',
-    volume:curVol.toFixed(0),volume_avg20:avgVol.toFixed(0),volume_vs_avg:volRatio+'% of 20-period average',
-    change_24h:change24h,atr:atr.toFixed(4),atr_pct:atrPct.toFixed(2),
-    is_ranging:isRanging?'true':'false',market_regime:isRanging?'ranging market':'trending market',
-    price_vs_ema50:((price-ema50)/ema50*100).toFixed(2)+'% from EMA50',
-    price_vs_ema200:((price-ema200)/ema200*100).toFixed(2)+'% from EMA200',
-  };
+  // TA runs server-side — logic not visible in DevTools
+  const res = await fetch('/api/ta?coin='+encodeURIComponent(coin)+'&tf='+encodeURIComponent(tf));
+  if(!res.ok) throw new Error('TA API error: HTTP '+res.status);
+  const ta = await res.json();
+  if(ta.error) throw new Error(ta.error);
+  return ta;
 }
 
 async function analyze(){
@@ -650,40 +601,10 @@ async function analyze(){
     setPhase('Fetching Binance OHLCV data...');
     const ta=await fetchRealTA(selectedCoin,selectedTf);
 
-    // Fear & Greed
-    var fearGreedVal='50',fearGreedLabel='Neutral',fgOk=false;
-    try{const fg=await fetch('https://api.alternative.me/fng/?limit=1');const fgd=await fg.json();if(fgd.data&&fgd.data[0]){fearGreedVal=fgd.data[0].value;fearGreedLabel=fgd.data[0].value_classification;fgOk=true;}}catch(e){console.warn('[F&G unavailable]',e.message);}
-
-    // Funding Rate
-    var fundingRate=null,fundingLabel='N/A',fundOk=false;
-    try{
-      const fsym={BTC:'BTCUSDT',ETH:'ETHUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',XRP:'XRPUSDT'}[selectedCoin];
-      if(fsym){const fr=await fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol='+fsym);const frd=await fr.json();if(frd.lastFundingRate){fundingRate=parseFloat(frd.lastFundingRate)*100;fundingLabel=fundingRate>0.05?'Overheated Longs':fundingRate<-0.05?'Overheated Shorts':'Neutral';fundOk=true;}}
-    }catch(e){console.warn('[Funding unavailable]',e.message);}
-
-    // Higher Timeframe
-    var htfTrend='neutral',htfLabel='N/A';
-    try{
-      const htfMap={'1h':'4h','2h':'4h','4h':'1d','8h':'1d','12h':'1d','1d':'1w','1w':'1m','1m':'1m'};
-      const htf=htfMap[selectedTf]||'1d';
-      if(htf!==selectedTf){
-        const htfKlines=await _cachedFetch(BINANCE_BASE+'/klines?symbol='+(SYMBOLS[selectedCoin]||selectedCoin+'USDT')+'&interval='+(BINANCE_INTERVALS[htf]||'1d')+'&limit=60');
-        if(htfKlines&&htfKlines.length>=30){
-          const hc=htfKlines.map(function(k){return parseFloat(k[4]);});
-          const he20=calcEMA(hc,20),he50=calcEMA(hc,50),hp=hc[hc.length-1];
-          htfTrend=(hp>he20&&he20>he50)?'bullish':(hp<he20&&he20<he50)?'bearish':'neutral';
-          htfLabel=htf.toUpperCase()+' trend: '+htfTrend+' (EMA20 $'+he20.toFixed(2)+' / EMA50 $'+he50.toFixed(2)+')';
-        }
-      }
-    }catch(e){}
-
-    ta.fear_greed_value=fearGreedVal; ta.fear_greed_label=fearGreedLabel;
-    ta.funding_rate=fundingRate!==null?fundingRate.toFixed(4):'N/A'; ta.funding_label=fundingLabel;
-    ta.htf_trend=htfTrend; ta.htf_label=htfLabel;
-
+    // All TA + sentiment fetched server-side from /api/ta
     var dataWarnings=[];
-    if(!fgOk) dataWarnings.push('F&G unavailable');
-    if(!fundOk&&{BTC:1,ETH:1,SOL:1,BNB:1,XRP:1}[selectedCoin]) dataWarnings.push('Funding unavailable');
+    if(!ta._fgOk)   dataWarnings.push('F&G unavailable');
+    if(!ta._fundOk && ['BTC','ETH','SOL','BNB','XRP'].includes(selectedCoin)) dataWarnings.push('Funding unavailable');
     setPhase('Price $'+fmt(ta.current_price)+' · RSI '+ta.rsi+(dataWarnings.length?' · ⚠ '+dataWarnings.join(', '):'')+' · Connecting...');
 
     const glMod=await import('https://esm.sh/genlayer-js@latest');
