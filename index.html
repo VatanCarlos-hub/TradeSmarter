@@ -50,8 +50,8 @@
     .coin-input{width:100%;background:var(--cream);border:2px solid var(--cream3);border-radius:3px;color:var(--dark);font-family:var(--display);font-size:36px;font-weight:700;letter-spacing:3px;padding:16px 20px;transition:all .25s;outline:none}
     .coin-input:focus{border-color:var(--gold2);background:#fff;box-shadow:0 0 0 4px rgba(154,111,26,0.08)}
     .coin-input::placeholder{color:var(--cream3);font-weight:400}
-    .quick-coins{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
-    .qc{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:6px 14px;background:var(--cream);border:1.5px solid var(--cream3);color:var(--text3);cursor:pointer;border-radius:2px;transition:all .18s;font-weight:500;touch-action:manipulation}
+    .quick-coins{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}
+    .qc{font-family:var(--mono);font-size:11px;letter-spacing:1px;padding:6px 8px;background:var(--cream);border:1.5px solid var(--cream3);color:var(--text3);cursor:pointer;border-radius:2px;transition:all .18s;font-weight:500;touch-action:manipulation;text-align:center}
     .qc:hover{border-color:var(--gold-border-s);color:var(--gold);background:#fff}
     .qc.active{border-color:var(--gold2);color:var(--gold);background:var(--gold-bg);font-weight:600}
     .live-badge{display:none;align-items:center;gap:10px;margin-top:12px;padding:10px 16px;background:var(--cream);border:1.5px solid var(--cream3);border-radius:3px}
@@ -183,7 +183,7 @@
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
     ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:var(--cream3)}
-    @media(max-width:580px){.wrap{padding:48px 20px 80px}.levels-grid,.scenarios-grid{grid-template-columns:1fr}.level-item.current{grid-column:auto}.result-hero-coin{font-size:40px}.result-hero-price{font-size:24px}.prob-bars{gap:8px}.indicator-row{grid-template-columns:110px 1fr}}
+    @media(max-width:580px){.wrap{padding:48px 20px 80px}.levels-grid,.scenarios-grid{grid-template-columns:1fr}.level-item.current{grid-column:auto}.result-hero-coin{font-size:40px}.result-hero-price{font-size:24px}.prob-bars{gap:8px}.indicator-row{grid-template-columns:110px 1fr}.quick-coins{grid-template-columns:repeat(4,1fr)}}
   </style>
 </head>
 <body>
