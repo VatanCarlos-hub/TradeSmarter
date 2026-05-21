@@ -8,7 +8,8 @@ const BINANCE_FUTURES = 'https://fapi.binance.com/fapi/v1';
 
 const SYMBOLS = {
   BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',
-  BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT',SUI:'SUIUSDT'
+  BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT',
+  SUI:'SUIUSDT',TAO:'TAOUSDT',HYPE:'HYPEUSDT'
 };
 
 const INTERVALS = {
@@ -124,7 +125,7 @@ export default async function handler(req) {
       (HTF_MAP[tf] !== tf)
         ? fetch(`${BINANCE_BASE}/klines?symbol=${sym}&interval=${INTERVALS[HTF_MAP[tf]]}&limit=60`).then(r => r.json())
         : Promise.resolve(null),
-      ['BTC','ETH','SOL','BNB','XRP'].includes(coin)
+      ['BTC','ETH','SOL','BNB','XRP','TAO','HYPE'].includes(coin)
         ? fetch(`${BINANCE_FUTURES}/premiumIndex?symbol=${sym}`).then(r => r.json())
         : Promise.resolve(null),
     ]);
