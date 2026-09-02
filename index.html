@@ -364,7 +364,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x8A32...ae3d</p>
+      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x7583...0FA7</p>
       <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:6px 14px;cursor:pointer;border-radius:2px">⚠ DISCLAIMER</button>
     </div>
   </div>
@@ -398,7 +398,7 @@
 </div>
 
 <script>
-const CONTRACT   = '0x8A32Ed64C1C706fBe8DabfeB18766eB4d9d0ae3d';
+const CONTRACT   = '0x75838e366a071953A1754742815b6124b5c30FA7';
 const STUDIO_RPC = 'https://studio.genlayer.com/api';
 const BINANCE_BASE = 'https://api.binance.com/api/v3';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
@@ -621,7 +621,7 @@ async function analyze(){
     const client=glMod.createClient({chain:chainsMod.studionet,account:walletAddress});
     try{await client.connect('studionet');}catch(ce){console.warn('[Connect]',ce.message);}
 
-    setPhase('Submitting to GenLayer AI Jury...');
+    let prevRequestId=0;     try{       const prevRaw=await client.readContract({address:CONTRACT,functionName:'get_result',args:[walletAddress,selectedCoin,selectedTf]});       if(prevRaw&&typeof prevRaw==='string'&&prevRaw.trim()!==''){         const pp=JSON.parse(prevRaw);         if(pp&&pp.request_id) prevRequestId=+pp.request_id;       }     }catch(pe){console.warn('[PrevResult]',pe.message);}      setPhase('Submitting to GenLayer AI Jury...');
     const txHash=await client.writeContract({
       address:      CONTRACT,
       functionName: 'request_analysis',
@@ -643,7 +643,7 @@ async function analyze(){
         if(!raw||typeof raw!=='string'||raw.trim()==='') continue;
         let parsed;
         try{parsed=JSON.parse(raw);}catch(e){continue;}
-        if(parsed&&parsed.trend&&parsed.coin===coinAtSubmit){data=parsed;break;}
+        if(parsed&&parsed.trend&&parsed.coin===coinAtSubmit&&parsed.tf===tfAtSubmit&&(+parsed.request_id||0)>prevRequestId){data=parsed;break;}
       }catch(e){console.warn('[Poll '+attempt+']',e.message);}
     }
     if(!data) throw new Error('Analysis timed out. GenLayer may be congested — please try again.');
@@ -685,9 +685,9 @@ function renderResult(d,ta){
   setText('r-tf',selectedTf.toUpperCase()+' ANALYSIS');
   setText('r-coin',selectedCoin);
   $('r-price').textContent='$'+fmt(ta.current_price);
-  const ch=parseFloat(ta.change_24h||0),chEl=$('r-change');
-  chEl.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% 24h';
-  chEl.className='result-hero-change '+(ch>=0?'up':'down');
+  const ch=parseFloat(ta.change_24h),chEl=$('r-change');
+  if(isNaN(ch)){chEl.textContent='';chEl.className='result-hero-change';}
+  else{chEl.textContent=(ch>=0?'+':'')+ch.toFixed(2)+'% 24h';chEl.className='result-hero-change '+(ch>=0?'up':'down');}
   const tb=$('r-trend-badge');tb.className='trend-badge '+trend.cls;
   setText('r-trend-icon',trend.icon);setText('r-trend-text',(d.trend||'NEUTRAL').toUpperCase());
   setText('r-trend-reason',d.trend_reason||'');
@@ -725,14 +725,16 @@ function renderResult(d,ta){
   setText('r-rsi-val','RSI '+ta.rsi+(rsiVal>70?' — ⚠ Overbought':rsiVal<30?' — ⚠ Oversold':''));
   setTimeout(function(){
     const color=rsiVal>70?'#c07070':rsiVal<30?'#7eb87e':'#b8922a';
-    $('rsi-fill').style.width=rsiVal+'%';$('rsi-fill').style.background=color;
-    $('rsi-marker').style.left=rsiVal+'%';
+    var rv=isNaN(rsiVal)?0:rsiVal;
+    $('rsi-fill').style.width=rv+'%';$('rsi-fill').style.background=color;
+    $('rsi-marker').style.left=rv+'%';
   },300);
   setText('r-rsi-int',d.rsi_interpretation||'');
   $('r-macd-val').innerHTML='<strong>Line '+ta.macd+'</strong> · Signal '+ta.macd_signal+' · Hist '+ta.macd_hist;
   setText('r-macd-int',(d.macd_interpretation||'')+' · '+ta.macd_status);
-  setText('r-ema50','$'+fmt(ta.ema50));setText('r-ema50-dist',ta.price_vs_ema50);
-  setText('r-ema200','$'+fmt(ta.ema200));setText('r-ema200-dist',ta.price_vs_ema200);
+  var emaTxt=function(v){return (v===undefined||v===null||v==='N/A')?'N/A':'$'+fmt(v);};
+  setText('r-ema50',emaTxt(ta.ema50));setText('r-ema50-dist',ta.price_vs_ema50||'');
+  setText('r-ema200',emaTxt(ta.ema200));setText('r-ema200-dist',ta.price_vs_ema200||'');
   setText('r-ema-cross',ta.ema_cross);setText('r-ema-int',d.ema_interpretation||'');
   $('r-vol').innerHTML='<strong>'+fmt(ta.volume)+'</strong> · '+ta.volume_vs_avg;
   setText('r-vol-int',d.volume_interpretation||'');
