@@ -364,7 +364,7 @@
     </div>
 
     <div class="result-footer">
-      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0x7583...0FA7</p>
+      <p class="result-footer-text" id="footer-text-main">NOT FINANCIAL ADVICE &nbsp;·&nbsp; GENLAYER AI JURY &nbsp;·&nbsp; BINANCE OHLCV DATA &nbsp;·&nbsp; CONTRACT 0xaFC0...46De</p>
       <button onclick="document.getElementById('disclaimer-modal').style.display='flex'" style="margin-top:12px;font-family:var(--mono);font-size:10px;letter-spacing:2px;color:var(--text4);background:none;border:1px solid var(--cream3);padding:6px 14px;cursor:pointer;border-radius:2px">⚠ DISCLAIMER</button>
     </div>
   </div>
@@ -379,7 +379,7 @@
       <!-- populated by JS -->
     </div>
     <div style="margin-top:16px;font-family:var(--mono);font-size:9px;color:var(--text4);text-align:center;letter-spacing:1px;line-height:1.6">
-      By connecting you agree to the disclaimer.<br>Alpha Signal runs on GenLayer Studionet.
+      By connecting you agree to the disclaimer.<br>Alpha Signal runs on GenLayer Bradbury.
     </div>
   </div>
 </div>
@@ -399,7 +399,8 @@
 
 <script>
 const CONTRACT   = '0xaFC011f6C0701fA7dBc8aD80b22239624Fe746De';
-const STUDIO_RPC = 'https://studio.genlayer.com/api';
+// Chain is resolved at runtime from genlayer-js, so no chain id or RPC is hardcoded wrong.
+var GL_CHAIN = null, GL_CHAIN_NAME = 'GenLayer Bradbury', GL_RPC = '';
 const BINANCE_BASE = 'https://api.binance.com/api/v3';
 const BINANCE_INTERVALS = {'1h':'1h','2h':'2h','4h':'4h','8h':'8h','12h':'12h','1d':'1d','1w':'1w','1m':'1M'};
 const SYMBOLS = {BTC:'BTCUSDT',ETH:'ETHUSDT',XRP:'XRPUSDT',SOL:'SOLUSDT',BNB:'BNBUSDT',DOGE:'DOGEUSDT',ADA:'ADAUSDT',AVAX:'AVAXUSDT',SUI:'SUIUSDT',TAO:'TAOUSDT',HYPE:'HYPEUSDT'};
@@ -461,7 +462,7 @@ async function connectWalletConnect(){
     const {EthereumProvider} = await import('https://esm.sh/@walletconnect/ethereum-provider@2');
     const wcp = await EthereumProvider.init({
       projectId: WC_PROJECT_ID,
-      chains: [4337], // GenLayer studionet chain id — adjust if needed
+      chains: [4221], // GenLayer Bradbury chain id
       showQrModal: true,
       metadata: {
         name: 'Alpha Signal',
@@ -612,14 +613,33 @@ async function analyze(){
     const chainsMod=await import('https://esm.sh/genlayer-js@latest/chains');
     const typesMod=await import('https://esm.sh/genlayer-js@latest/types');
 
+    // Find the Bradbury chain under whatever name this genlayer-js build exports.
+    var chainKey=null;
+    var candidates=['bradbury','testnetBradbury','bradburyTestnet','genlayerBradbury'];
+    for(var ci=0;ci<candidates.length;ci++){ if(chainsMod[candidates[ci]]){chainKey=candidates[ci];break;} }
+    if(!chainKey){
+      var keys=Object.keys(chainsMod);
+      for(var ki=0;ki<keys.length;ki++){ if(keys[ki].toLowerCase().indexOf('bradbury')>=0){chainKey=keys[ki];break;} }
+    }
+    if(!chainKey) throw new Error('Bradbury chain not exported by genlayer-js. Available: '+Object.keys(chainsMod).join(', '));
+    GL_CHAIN=chainsMod[chainKey];
     try{
-      const chainHex='0x'+chainsMod.studionet.id.toString(16);
-      await window.ethereum.request({method:'wallet_addEthereumChain',params:[{chainId:chainHex,chainName:'GenLayer Studio',rpcUrls:[STUDIO_RPC],nativeCurrency:{name:'GEN',symbol:'GEN',decimals:18}}]});
+      if(GL_CHAIN.rpcUrls&&GL_CHAIN.rpcUrls.default&&GL_CHAIN.rpcUrls.default.http&&GL_CHAIN.rpcUrls.default.http[0]){
+        GL_RPC=GL_CHAIN.rpcUrls.default.http[0];
+      }
+    }catch(re){}
+    console.log('[Chain]',chainKey,'id',GL_CHAIN.id,'rpc',GL_RPC);
+
+    try{
+      const chainHex='0x'+GL_CHAIN.id.toString(16);
+      var addParams={chainId:chainHex,chainName:GL_CHAIN_NAME,nativeCurrency:{name:'GEN',symbol:'GEN',decimals:18}};
+      if(GL_RPC) addParams.rpcUrls=[GL_RPC];
+      await window.ethereum.request({method:'wallet_addEthereumChain',params:[addParams]});
       await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:chainHex}]});
     }catch(se){console.warn('[ChainSwitch]',se.message);}
 
-    const client=glMod.createClient({chain:chainsMod.studionet,account:walletAddress});
-    try{await client.connect('studionet');}catch(ce){console.warn('[Connect]',ce.message);}
+    const client=glMod.createClient({chain:GL_CHAIN,account:walletAddress});
+    try{await client.connect(chainKey);}catch(ce){console.warn('[Connect]',ce.message);}
 
     setPhase('Submitting to GenLayer AI Jury...');
     const txHash=await client.writeContract({
