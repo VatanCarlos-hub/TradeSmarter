@@ -1,19 +1,21 @@
 // Alpha Signal — TA Edge Function
 // Runs server-side on Vercel. Never visible in browser DevTools.
 //
-// Review fixes in this version:
-//  1. Candle window: every timeframe now requests 300 candles (Binance caps at 1000
-//     and simply returns fewer when a pair has less history). Previously weekly and
-//     monthly requested only 100, which made EMA200 impossible.
-//  2. calcEMA returns null when there is not enough history for the period, instead
-//     of silently seeding the average over too few candles and dividing by the full
-//     period (which roughly halved EMA200 on 1W/1M). Downstream logic treats null as
-//     "N/A" and never uses it for crosses, distances or resistance levels.
-//  3. 24h change: taken from Binance's 24hr ticker, so it is a real 24h figure on
-//     every timeframe. Candle-based fallback is interval-aware (only where 24h is a
-//     whole number of candles). Weekly/monthly have no candle-based 24h value.
-//  4. Interval-specific change: an explicit change over ONE candle of the selected
-//     timeframe is added, labelled by that timeframe.
+// Fixes in this version:
+//  A) Support/resistance were asymmetric and unrealistically far away.
+//     - Supports now also consider EMA50/EMA200 when price trades above them
+//       (resistances already did this), so both sides are treated the same way.
+//     - Swing detection runs twice: a wide pass (n=5) for major structure and a
+//       narrow pass (n=2) over the most recent candles, so fresh lows/highs
+//       created during a strong move are not ignored.
+//     - The minimum distance filter is now much tighter for the FIRST level
+//       (md * 0.35) so a nearby, genuinely relevant level is not skipped.
+//     - Levels are ranked by proximity to price, nearest first.
+//  B) Candle window: every timeframe fetches 300 candles, so EMA200 is
+//     computable on weekly and monthly (previously 100 -> silently wrong).
+//  C) calcEMA returns null instead of a wrong value when history is too short.
+//  D) 24h change comes from Binance's 24hr ticker, so it is a real 24h figure
+//     on every timeframe, plus a separate interval-specific change.
 
 export const config = { runtime: 'edge' };
 
@@ -36,23 +38,17 @@ const HTF_MAP = {
   '12h':'1d','1d':'1w','1w':'1m','1m':'1m'
 };
 
+// Minimum separation between price and a level, per timeframe.
 const MIN_DIST = {
   '1h':0.008,'2h':0.012,'4h':0.018,'8h':0.024,
   '12h':0.030,'1d':0.045,'1w':0.07,'1m':0.10
 };
 
-// Candles of the selected interval that make up 24 hours (candle-based fallback only).
-// Weekly and monthly candles are longer than 24h, so no candle-based 24h change exists.
 const CANDLES_PER_24H = { '1h':24, '2h':12, '4h':6, '8h':3, '12h':2, '1d':1 };
-
-// Candles to request for every timeframe. Gives EMA200 room to converge.
 const CANDLE_LIMIT = 300;
-
-// Minimum candles needed for RSI(14) + MACD(12/26/9) to be meaningful.
 const MIN_CANDLES = 40;
 
 // ── Math helpers ─────────────────────────────────────────────
-// Returns null when history is too short for the period, instead of a wrong value.
 function calcEMA(closes, period) {
   if (!Array.isArray(closes) || closes.length < period) return null;
   const k = 2 / (period + 1);
@@ -78,7 +74,6 @@ function calcRSI(closes, period = 14) {
 }
 
 function calcMACD(closes) {
-  // Needs 26 closes for the slow EMA plus 9 MACD values for the signal line.
   if (closes.length < 35) return null;
   const k12 = 2 / 13, k26 = 2 / 27;
   let e12 = closes.slice(0, 12).reduce((a, b) => a + b, 0) / 12;
@@ -111,19 +106,32 @@ function calcATR(highs, lows, closes, period = 14) {
   return atr;
 }
 
-function findSwingHighsLows(highs, lows, n = 5) {
-  const supports = [], resistances = [];
-  for (let i = n; i < lows.length - n; i++) {
-    const sl = lows.slice(i - n, i + n + 1);
-    if (lows[i] === Math.min(...sl)) supports.push(lows[i]);
+// Swing detection over a slice, with a configurable lookback.
+function swings(highs, lows, n, fromIdx) {
+  const sup = [], res = [];
+  const start = Math.max(n, fromIdx || n);
+  for (let i = start; i < lows.length - n; i++) {
+    const w = lows.slice(i - n, i + n + 1);
+    if (lows[i] === Math.min(...w)) sup.push(lows[i]);
   }
-  for (let i = n; i < highs.length - n; i++) {
-    const sh = highs.slice(i - n, i + n + 1);
-    if (highs[i] === Math.max(...sh)) resistances.push(highs[i]);
+  for (let i = start; i < highs.length - n; i++) {
+    const w = highs.slice(i - n, i + n + 1);
+    if (highs[i] === Math.max(...w)) res.push(highs[i]);
   }
-  supports.sort((a, b) => b - a);
-  resistances.sort((a, b) => a - b);
-  return { supports, resistances };
+  return { sup, res };
+}
+
+// Merge levels that sit within `tol` of each other, keep the strongest.
+function dedupe(levels, tol) {
+  const out = [];
+  for (const lv of levels) {
+    let merged = false;
+    for (let i = 0; i < out.length; i++) {
+      if (Math.abs(out[i] - lv) / lv < tol) { merged = true; break; }
+    }
+    if (!merged) out.push(lv);
+  }
+  return out;
 }
 
 // ── Main handler ─────────────────────────────────────────────
@@ -150,7 +158,6 @@ export default async function handler(req) {
     const interval = INTERVALS[tf];
     const md       = MIN_DIST[tf] || 0.025;
 
-    // ── Fetch in parallel ──────────────────────────────────
     const [klines, fgRes, htfKlines, fundingRes, tickerRes] = await Promise.allSettled([
       fetch(`${BINANCE_BASE}/klines?symbol=${sym}&interval=${interval}&limit=${CANDLE_LIMIT}`).then(r => r.json()),
       fetch('https://api.alternative.me/fng/?limit=1').then(r => r.json()),
@@ -160,7 +167,6 @@ export default async function handler(req) {
       ['BTC','ETH','SOL','BNB','XRP','TAO','HYPE'].includes(coin)
         ? fetch(`${BINANCE_FUTURES}/premiumIndex?symbol=${sym}`).then(r => r.json())
         : Promise.resolve(null),
-      // Real 24h change, independent of the selected timeframe.
       fetch(`${BINANCE_BASE}/ticker/24hr?symbol=${sym}`).then(r => r.json()),
     ]);
 
@@ -169,7 +175,6 @@ export default async function handler(req) {
       return new Response(JSON.stringify({ error: 'Insufficient candle data' }), { status: 502, headers });
     }
 
-    // ── Parse candles ─────────────────────────────────────
     const highs   = candles.map(k => parseFloat(k[2]));
     const lows    = candles.map(k => parseFloat(k[3]));
     const closes  = candles.map(k => parseFloat(k[4]));
@@ -178,47 +183,50 @@ export default async function handler(req) {
 
     const price   = closes[n - 1];
     const rsi     = calcRSI(closes, 14);
-    const ema50   = calcEMA(closes, 50);   // null if < 50 candles
-    const ema200  = calcEMA(closes, 200);  // null if < 200 candles (e.g. monthly on newer pairs)
+    const ema50   = calcEMA(closes, 50);
+    const ema200  = calcEMA(closes, 200);
     const macdR   = calcMACD(closes);
     const atr     = calcATR(highs, lows, closes, 14);
     const atrPct  = atr === null ? null : (atr / price * 100);
 
-    // Volume (last completed candle)
     const curVol      = volumes[n - 2];
     const avgVol      = volumes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
     const volRatioRaw = avgVol > 0 ? curVol / avgVol : 0;
     const volRatio    = (volRatioRaw * 100).toFixed(0);
 
-    // S/R Levels
-    const swingN = n < 50 ? 3 : 5;
-    const { supports, resistances } = findSwingHighsLows(highs, lows, swingN);
+    // ── Support / resistance ───────────────────────────────
+    // Wide pass for major structure, narrow pass for recent structure.
+    const wide   = swings(highs, lows, 5, 5);
+    const recent = swings(highs, lows, 2, Math.max(2, n - 40));
 
-    const s1 = supports.find(s => s <= price * (1 - md)) || price * (1 - md * 1.4);
-    let   s2 = supports.find(s => s <= price * (1 - md * 1.8)) || s1 * (1 - md * 0.9);
+    // Candidate pools: swings from both passes, plus EMAs on the correct side.
+    let supCand = wide.sup.concat(recent.sup).filter(v => v < price);
+    let resCand = wide.res.concat(recent.res).filter(v => v > price);
 
-    // EMAs only act as resistance when they actually exist.
-    let emaR1 = null, emaR2 = null;
-    if (ema50 !== null && ema50 > price * (1 + md * 0.5)) emaR1 = ema50;
-    if (ema200 !== null && ema200 > price * (1 + md * 0.5)) {
-      if (emaR1 && ema200 > emaR1 * (1 + md * 0.3)) emaR2 = ema200;
-      else if (!emaR1) emaR1 = ema200;
+    // EMAs act as support when price is above them, as resistance when below.
+    if (ema50 !== null) {
+      if (ema50 < price) supCand.push(ema50); else resCand.push(ema50);
+    }
+    if (ema200 !== null) {
+      if (ema200 < price) supCand.push(ema200); else resCand.push(ema200);
     }
 
-    const r1Swing = resistances.find(r => r >= price * (1 + md));
-    const r2Swing = r1Swing ? resistances.find(r => r >= r1Swing * (1 + md * 0.5)) : null;
-    const maxR2   = price * (tf === '1w' ? 1.55 : tf === '1m' ? 1.80 : 1.35);
-    const r1      = (emaR1 && r1Swing) ? Math.min(emaR1, r1Swing) : (emaR1 || r1Swing || price * (1 + md * 1.4));
-    const r2Cands = [emaR2, r2Swing].filter(x => x && x >= r1 * (1 + md) && x <= maxR2);
-    const r2      = r2Cands.length > 0 ? Math.min(...r2Cands) : Math.min(r1 * (1 + md * 1.5), maxR2);
+    // Minimum separation: tight for the first level, wider for the second.
+    const near = md * 0.35;
+    const far  = md * 1.10;
 
-    const minS2 = price * (tf === '1w' ? 0.55 : tf === '1m' ? 0.45 : 0.65);
-    if (s2 >= s1 * (1 - md * 0.3)) s2 = s1 * (1 - md * 1.0);
-    if (s2 < minS2) s2 = Math.max(s2, minS2);
+    // Nearest first.
+    supCand = dedupe(supCand.sort((a, b) => b - a), md * 0.30);
+    resCand = dedupe(resCand.sort((a, b) => a - b), md * 0.30);
 
-    const dt1 = s2;
-    const dt2 = supports.find(s => s < s2 * (1 - md * 0.3)) || s2 * (1 - md * 1.0);
+    const s1 = supCand.find(v => v <= price * (1 - near)) || price * (1 - md);
+    const s2 = supCand.find(v => v <= s1 * (1 - far))     || s1 * (1 - md);
+    const r1 = resCand.find(v => v >= price * (1 + near)) || price * (1 + md);
+    const r2 = resCand.find(v => v >= r1 * (1 + far))     || r1 * (1 + md);
+
+    // Scenario targets follow the same levels, so the card stays consistent.
     const bt1 = r1, bt2 = r2;
+    const dt1 = s1, dt2 = s2;
 
     // ── 24h change (real, timeframe-independent) ───────────
     let change24h = 'N/A', change24hSource = 'unavailable';
@@ -226,18 +234,14 @@ export default async function handler(req) {
       change24h = parseFloat(tickerRes.value.priceChangePercent).toFixed(2);
       change24hSource = 'binance_24hr_ticker';
     } else if (CANDLES_PER_24H[tf] && n > CANDLES_PER_24H[tf]) {
-      // Interval-aware fallback: look back exactly 24h worth of candles.
       const ago = closes[n - 1 - CANDLES_PER_24H[tf]];
       change24h = ((price - ago) / ago * 100).toFixed(2);
       change24hSource = 'candles_' + CANDLES_PER_24H[tf] + 'x' + tf;
     }
 
-    // ── Interval-specific change (one candle of the selected timeframe) ─
     const prevClose      = closes[n - 2];
     const changeInterval = ((price - prevClose) / prevClose * 100).toFixed(2);
-    const changeIntervalLabel = tf.toUpperCase() + ' change';
 
-    // Ranging detection (10 candles of the selected interval)
     const recentMove = Math.abs(closes[n - 1] - closes[n - 11]) / price * 100;
     const isRanging  = atrPct === null ? false : recentMove < atrPct * 0.6;
 
@@ -258,7 +262,7 @@ export default async function handler(req) {
       fundOk = true;
     }
 
-    // ── Higher Timeframe (needs 50 candles for a real EMA50) ─
+    // ── Higher Timeframe ───────────────────────────────────
     let htfTrend = 'neutral', htfLabel = 'N/A', htfOk = false;
     if (htfKlines.status === 'fulfilled' && Array.isArray(htfKlines.value) && htfKlines.value.length >= 50) {
       const hc   = htfKlines.value.map(k => parseFloat(k[4]));
@@ -279,12 +283,10 @@ export default async function handler(req) {
 
     const emaCross =
       (ema50 === null || ema200 === null)
-        ? 'N/A (not enough history for EMA' + (ema200 === null ? '200' : '50') + ' on this timeframe)'
-        : (ema50 > ema200
-            ? 'EMA50 above EMA200 (golden cross — bullish)'
-            : 'EMA50 below EMA200 (death cross — bearish)');
+        ? 'N/A (not enough history on this timeframe)'
+        : (ema50 > ema200 ? 'Golden cross, EMA50 above EMA200'
+                          : 'Death cross, EMA50 below EMA200');
 
-    // ── Response (keys kept compatible with the frontend) ──
     const ta = {
       current_price:   price.toFixed(2),
       support_1:       s1.toFixed(2),
@@ -308,9 +310,7 @@ export default async function handler(req) {
       macd_signal:     macdR ? macdR.signal.toFixed(4)    : 'N/A',
       macd_hist:       macdR ? macdR.histogram.toFixed(4) : 'N/A',
       macd_status:     macdR
-                         ? (macdR.histogram > 0
-                             ? 'Histogram positive (bullish momentum)'
-                             : 'Histogram negative (bearish momentum)')
+                         ? (macdR.histogram > 0 ? 'Histogram positive' : 'Histogram negative')
                          : 'N/A',
       volume:          curVol.toFixed(0),
       volume_avg20:    avgVol.toFixed(0),
@@ -318,7 +318,7 @@ export default async function handler(req) {
       change_24h:      change24h,
       change_24h_source: change24hSource,
       change_interval: changeInterval,
-      change_interval_label: changeIntervalLabel,
+      change_interval_label: tf.toUpperCase() + ' change',
       atr:             numOrNA(atr, 4),
       atr_pct:         numOrNA(atrPct, 2),
       is_ranging:      isRanging ? 'true' : 'false',
@@ -331,7 +331,6 @@ export default async function handler(req) {
       funding_label:   fundingLabel,
       htf_trend:       htfTrend,
       htf_label:       htfLabel,
-      // Data quality / transparency flags
       candles_used:    n,
       timeframe:       tf,
       _ema50Ok:  ema50  !== null,
